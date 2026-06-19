@@ -10,6 +10,7 @@
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "seed:superadmin": "node scripts/seedSuperAdmin.js",
+    "seed:masters": "node scripts/seedMasters.js",
     "lint": "eslint src/",
     "test": "jest --coverage"
   },
