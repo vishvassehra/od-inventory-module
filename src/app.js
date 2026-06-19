@@ -66,6 +66,19 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // ── Health check ────────────────────────────────────────────────────────────
+// TEMPORARY — remove after seeding
+app.get('/seed-superadmin', async (req, res) => {
+  const secret = req.query.secret;
+  if (secret !== 'okiedokie-seed-2025') return res.status(403).json({ message: 'Forbidden' });
+  try {
+    const User = require('./modules/auth/user.model');
+    const { ROLES } = require('./config/constants');
+    const exists = await User.findOne({ email: process.env.SA_EMAIL });
+    if (exists) return res.json({ success: true, message: 'Super admin already exists' });
+    await User.create({ tenantId: null, name: 'Okie Dokie Admin', email: process.env.SA_EMAIL, password: process.env.SA_PASSWORD, role: ROLES.SUPER_ADMIN, mustChangePassword: false });
+    res.json({ success: true, message: 'Super admin created: ' + process.env.SA_EMAIL });
+  } catch(e) { res.status(500).json({ success: false, message: e.message }); }
+});
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
