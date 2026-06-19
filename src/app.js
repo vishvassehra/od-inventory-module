@@ -13,6 +13,7 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const authRoutes = require('./modules/auth/auth.routes');
 const superAdminRoutes = require('./modules/superadmin/superadmin.routes');
 const mastersRoutes = require('./modules/masters/masters.routes');
+const purchaseRoutes = require('./modules/purchase/purchase.routes');
 
 const app = express();
 
@@ -25,7 +26,7 @@ app.use(mongoSanitize());
 
 // ── Rate limiting ───────────────────────────────────────────────────────────
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 300,
   message: { success: false, message: 'Too many requests, please try again later.' },
   standardHeaders: true,
@@ -47,7 +48,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) return callback(null, true);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -78,6 +79,7 @@ app.get('/health', (req, res) => {
 app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/superadmin', superAdminRoutes);
 app.use('/api/v1/masters', mastersRoutes);
+app.use('/api/v1/purchase', purchaseRoutes);
 
 // ── 404 & Error handlers ────────────────────────────────────────────────────
 app.use(notFound);
