@@ -462,6 +462,232 @@ tbody tr:hover td{background:#FAFBFD}
   </div>
 </div>
 
+
+      <!-- STOCK SUMMARY -->
+      <div class="page hidden" id="pg-stock-summary">
+        <div class="ph">
+          <div><div class="pt">Stock Summary</div><div class="ps">Current stock levels across all warehouses</div></div>
+          <div class="pac">
+            <button class="btn btn-secondary btn-sm" onclick="loadStockSummary()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+            <button class="btn btn-primary" onclick="openM('m-opening-stock')"><i class="fa-solid fa-plus"></i> Opening Stock</button>
+          </div>
+        </div>
+        <!-- KPI row -->
+        <div class="krow" id="stock-krow">
+          <div class="kpi kbl"><div class="kl">Total Items</div><div class="kv" id="sk-items">—</div><div class="km">In stock</div><i class="fa-solid fa-cubes ki"></i></div>
+          <div class="kpi kgr"><div class="kl">Stock Value</div><div class="kv" id="sk-value">—</div><div class="km">At last purchase rate</div><i class="fa-solid fa-indian-rupee-sign ki"></i></div>
+          <div class="kpi kre"><div class="kl">Below Reorder</div><div class="kv" id="sk-reorder">—</div><div class="km">Need replenishment</div><i class="fa-solid fa-triangle-exclamation ki"></i></div>
+          <div class="kpi kor"><div class="kl">Zero Stock</div><div class="kv" id="sk-zero">—</div><div class="km">Out of stock items</div><i class="fa-solid fa-box-open ki"></i></div>
+        </div>
+        <div class="card">
+          <div class="fbar">
+            <input class="fs" id="ss-q" placeholder="Search item…" oninput="filterSummary()">
+            <select class="fsel" id="ss-wh-f" onchange="loadStockSummary()"><option value="">All Warehouses</option></select>
+            <select class="fsel" id="ss-cat-f" onchange="filterSummary()"><option value="">All Categories</option></select>
+            <select class="fsel" id="ss-reorder-f" onchange="filterSummary()"><option value="">All Items</option><option value="true">Below Reorder</option></select>
+            <span class="fct" id="ss-count"></span>
+          </div>
+          <div class="tw2"><table>
+            <thead><tr><th>Item Code</th><th>Name</th><th>Category</th><th>Warehouse</th><th style="text-align:right">Stock</th><th style="text-align:right">Reorder Qty</th><th style="text-align:right">Value</th><th>Alert</th><th></th></tr></thead>
+            <tbody id="ss-tbody"><tr><td colspan="9" class="lc"><span class="spin"></span></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- STOCK LEDGER -->
+      <div class="page hidden" id="pg-stock-ledger">
+        <div class="ph">
+          <div><div class="pt">Stock Ledger</div><div class="ps">Complete movement register with running balance</div></div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="cbody">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+              <div class="fg" style="margin:0;flex:1;min-width:200px">
+                <label class="fl">Item *</label>
+                <select class="inp sel" id="sl-item" onchange="loadLedger()"><option value="">Select item to view ledger…</option></select>
+              </div>
+              <div class="fg" style="margin:0">
+                <label class="fl">Warehouse</label>
+                <select class="inp sel" id="sl-wh" onchange="loadLedger()"><option value="">All</option></select>
+              </div>
+              <div class="fg" style="margin:0">
+                <label class="fl">From Date</label>
+                <input class="inp" type="date" id="sl-from" onchange="loadLedger()" style="width:140px">
+              </div>
+              <div class="fg" style="margin:0">
+                <label class="fl">To Date</label>
+                <input class="inp" type="date" id="sl-to" onchange="loadLedger()" style="width:140px">
+              </div>
+              <div class="fg" style="margin:0">
+                <label class="fl">Type</label>
+                <select class="inp sel" id="sl-type" onchange="loadLedger()" style="width:130px">
+                  <option value="">All</option>
+                  <option value="opening">Opening</option>
+                  <option value="grn">GRN</option>
+                  <option value="issue">Issue</option>
+                  <option value="return">Return</option>
+                  <option value="adj_add">Adj Add</option>
+                  <option value="adj_sub">Adj Sub</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="tw2"><table>
+            <thead><tr><th>Date</th><th>Type</th><th>Doc No.</th><th>Department</th><th>Warehouse</th><th style="text-align:right">In (+)</th><th style="text-align:right">Out (−)</th><th style="text-align:right">Balance</th><th>Rate</th></tr></thead>
+            <tbody id="sl-tbody"><tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);font-size:13px">Select an item above to view its ledger</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- SIVs -->
+      <div class="page hidden" id="pg-sivs">
+        <div class="ph">
+          <div><div class="pt">Stock Indents</div><div class="ps">Issue vouchers — request and issue stock to departments</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openSIVModal()"><i class="fa-solid fa-plus"></i> New Indent</button></div>
+        </div>
+        <div class="card">
+          <div class="fbar">
+            <select class="fsel" id="siv-sf" onchange="loadSIVs()"><option value="">All Status</option><option value="draft">Draft</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="cancelled">Cancelled</option></select>
+            <select class="fsel" id="siv-df" onchange="loadSIVs()"><option value="">All Departments</option></select>
+          </div>
+          <div class="tw2"><table>
+            <thead><tr><th>SIV Number</th><th>Department</th><th>Items</th><th>Purpose</th><th>Status</th><th>Issued At</th><th>Raised</th><th></th></tr></thead>
+            <tbody id="siv-tbody"><tr><td colspan="8" class="lc"><span class="spin"></span></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- STOCK RETURNS -->
+      <div class="page hidden" id="pg-stock-returns">
+        <div class="ph">
+          <div><div class="pt">Stock Returns</div><div class="ps">Items returned from departments back to store</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openReturnModal()"><i class="fa-solid fa-plus"></i> New Return</button></div>
+        </div>
+        <div class="card">
+          <div class="tw2"><table>
+            <thead><tr><th>Return No.</th><th>Department</th><th>SIV Ref</th><th>Items</th><th>Date</th><th>Posted</th><th></th></tr></thead>
+            <tbody id="ret-tbody"><tr><td colspan="7" class="lc"><span class="spin"></span></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- LOW STOCK ALERTS -->
+      <div class="page hidden" id="pg-low-stock">
+        <div class="ph">
+          <div><div class="pt">Low Stock Alerts</div><div class="ps">Items at or below reorder level</div></div>
+          <div class="pac">
+            <button class="btn btn-secondary btn-sm" onclick="loadLowStock()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+            <button class="btn btn-primary" onclick="navTo('pg-prs');setTimeout(openPRModal,200)"><i class="fa-solid fa-file-circle-plus"></i> Raise PR</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="tw2"><table>
+            <thead><tr><th>Item Code</th><th>Name</th><th>Warehouse</th><th style="text-align:right">Current Stock</th><th style="text-align:right">Reorder Qty</th><th style="text-align:right">Shortage</th><th></th></tr></thead>
+            <tbody id="ls-tbody"><tr><td colspan="7" class="lc"><span class="spin"></span></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+<!-- ── 1D MODALS ── -->
+
+<!-- New SIV Modal -->
+<div class="ov" id="m-siv">
+  <div class="modal mxl">
+    <div class="mhd"><span class="mtitle">New Stock Indent (SIV)</span><button class="mx" onclick="closeM('m-siv')">×</button></div>
+    <div class="mbody">
+      <div class="r2">
+        <div class="fg"><label class="fl">Department *</label><select class="inp sel" id="siv-dept"><option value="">Select…</option></select></div>
+        <div class="fg"><label class="fl">Default Warehouse *</label><select class="inp sel" id="siv-wh"><option value="">Select…</option></select></div>
+      </div>
+      <div class="fg"><label class="fl">Purpose</label><textarea class="txa" id="siv-purpose" rows="2" placeholder="Why is this stock needed?"></textarea></div>
+      <div class="sec">Items Required</div>
+      <table class="ltbl">
+        <thead><tr><th style="min-width:200px">Item *</th><th style="min-width:80px">UOM</th><th style="width:90px">Qty *</th><th style="width:120px">Available Stock</th><th>Remarks</th><th style="width:28px"></th></tr></thead>
+        <tbody id="siv-lines"></tbody>
+      </table>
+      <button class="addl" onclick="addSIVLine()"><i class="fa-solid fa-plus"></i> Add Item</button>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-siv')">Cancel</button>
+      <button class="btn btn-secondary" onclick="saveSIV(false)">Save Draft</button>
+      <button class="btn btn-primary" onclick="saveSIV(true)"><i class="fa-solid fa-paper-plane"></i> Submit for Approval</button>
+    </div>
+  </div>
+</div>
+
+<!-- Issue Stock Modal -->
+<div class="ov" id="m-issue">
+  <div class="modal mlg">
+    <div class="mhd"><span class="mtitle" id="issue-modal-title">Issue Stock</span><button class="mx" onclick="closeM('m-issue')">×</button></div>
+    <div class="mbody">
+      <div id="issue-info" style="background:var(--surface);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:13px"></div>
+      <div class="sec">Issue Quantities</div>
+      <table class="ltbl">
+        <thead><tr><th>Item</th><th>Requested</th><th style="width:110px">Available</th><th style="width:110px">Issue Qty *</th><th>Remarks</th></tr></thead>
+        <tbody id="issue-lines"></tbody>
+      </table>
+      <div class="fg" style="margin-top:16px"><label class="fl">Received By (Name)</label><input class="inp" id="issue-receiver" placeholder="Name of person receiving the stock"></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-issue')">Cancel</button>
+      <button class="btn btn-success" onclick="confirmIssue()"><i class="fa-solid fa-check-double"></i> Issue Stock</button>
+    </div>
+  </div>
+</div>
+
+<!-- Stock Return Modal -->
+<div class="ov" id="m-return">
+  <div class="modal mlg">
+    <div class="mhd"><span class="mtitle">Stock Return</span><button class="mx" onclick="closeM('m-return')">×</button></div>
+    <div class="mbody">
+      <div class="r2">
+        <div class="fg"><label class="fl">Department *</label><select class="inp sel" id="ret-dept"><option value="">Select…</option></select></div>
+        <div class="fg"><label class="fl">SIV Reference (optional)</label><select class="inp sel" id="ret-siv"><option value="">None — direct return</option></select></div>
+      </div>
+      <div class="fg"><label class="fl">Return Date</label><input class="inp" type="date" id="ret-date"></div>
+      <div class="sec">Items Being Returned</div>
+      <table class="ltbl">
+        <thead><tr><th style="min-width:180px">Item *</th><th style="min-width:80px">Warehouse *</th><th style="width:80px">Qty *</th><th style="width:100px">Condition</th><th>Remarks</th><th style="width:28px"></th></tr></thead>
+        <tbody id="ret-lines"></tbody>
+      </table>
+      <button class="addl" onclick="addReturnLine()"><i class="fa-solid fa-plus"></i> Add Item</button>
+      <div class="fg" style="margin-top:14px"><label class="fl">Remarks</label><textarea class="txa" id="ret-remarks" rows="2"></textarea></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-return')">Cancel</button>
+      <button class="btn btn-success" onclick="saveReturn()"><i class="fa-solid fa-rotate-left"></i> Post Return to Stock</button>
+    </div>
+  </div>
+</div>
+
+<!-- Opening Stock Modal -->
+<div class="ov" id="m-opening-stock">
+  <div class="modal mxl">
+    <div class="mhd"><span class="mtitle">Post Opening Stock</span><button class="mx" onclick="closeM('m-opening-stock')">×</button></div>
+    <div class="mbody">
+      <div class="r2">
+        <div class="fg"><label class="fl">As of Date *</label><input class="inp" type="date" id="os-date"></div>
+        <div class="fg"><label class="fl">Remarks</label><input class="inp" id="os-remarks" placeholder="e.g. Stock as on April 1, 2025"></div>
+      </div>
+      <div style="background:#FEF3C7;border-radius:var(--r);padding:10px 14px;font-size:12px;color:#92400E;margin-bottom:14px">
+        <i class="fa-solid fa-triangle-exclamation"></i> Opening stock entries are permanent and will be posted immediately to the stock ledger. Use this only for initial stock migration.
+      </div>
+      <div class="sec">Items & Quantities</div>
+      <table class="ltbl">
+        <thead><tr><th style="min-width:190px">Item *</th><th style="min-width:120px">Warehouse *</th><th style="min-width:80px">UOM</th><th style="width:90px">Qty *</th><th style="width:100px">Unit Rate</th><th style="width:28px"></th></tr></thead>
+        <tbody id="os-lines"></tbody>
+      </table>
+      <button class="addl" onclick="addOSLine()"><i class="fa-solid fa-plus"></i> Add Item</button>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-opening-stock')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOpeningStock()"><i class="fa-solid fa-check-double"></i> Post Opening Stock</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODALS -->
 <div class="ov" id="m-newinst">
   <div class="modal mlg">
@@ -1452,6 +1678,532 @@ async function saveUser(){
     toast('User created');closeM('m-user');sv('uname','');sv('uemail','');sv('upass','');$('m-user').dataset.itid='';
   }catch(e){toast(e.message,'err');}
 }
+
+
+// ══════════════════════════════════════════
+//  1D — STOCK OPERATIONS
+// ══════════════════════════════════════════
+
+// ── extend pgTitles ──────────────────────
+Object.assign(pgTitles, {
+  'pg-stock-summary': ['Stock Summary', 'Current stock levels across warehouses'],
+  'pg-stock-ledger':  ['Stock Ledger', 'Full movement register with running balance'],
+  'pg-sivs':          ['Stock Indents', 'Issue vouchers — SIV'],
+  'pg-stock-returns': ['Stock Returns', 'Items returned from departments'],
+  'pg-low-stock':     ['Low Stock Alerts', 'Items below reorder level'],
+});
+
+// ── extend pgLoaders ─────────────────────
+Object.assign(pgLoaders, {
+  'pg-stock-summary': loadStockSummary,
+  'pg-stock-ledger':  setupLedgerPage,
+  'pg-sivs':          loadSIVs,
+  'pg-stock-returns': loadReturns,
+  'pg-low-stock':     loadLowStock,
+});
+
+// ── patch buildNav to include Stock section ──
+const _origBuildNav = buildNav;
+buildNav = function(role) {
+  _origBuildNav(role);
+  if (role === 'super_admin') return;
+  const canWrite = ['inst_admin', 'purchase_officer', 'store_manager'].includes(role);
+  if (!canWrite) return;
+  // Append stock section to sidebar
+  const extra = `<div class="sbgl">Stock</div>
+    ${nav('pg-stock-summary','fa-chart-bar','Stock Summary')}
+    ${nav('pg-sivs','fa-boxes-stacked','Stock Indents')}
+    ${nav('pg-stock-returns','fa-rotate-left','Returns')}
+    ${nav('pg-stock-ledger','fa-scroll','Ledger')}
+    ${nav('pg-low-stock','fa-triangle-exclamation','Low Stock')}`;
+  $('sidenav').innerHTML += extra;
+};
+
+// ── cached stock summary data ─────────────
+let _summaryData = [];
+
+// ═══════════════════════════════════════════
+//  STOCK SUMMARY
+// ═══════════════════════════════════════════
+async function loadStockSummary() {
+  $('ss-tbody').innerHTML = '<tr><td colspan="9" class="lc"><span class="spin"></span></td></tr>';
+  const whf = selV('ss-wh-f');
+  let url = '/stock/summary';
+  if (whf) url += `?warehouseId=${whf}`;
+  try {
+    // Populate warehouse filter
+    if (_whs.length === 0) await prefetch();
+    const whEl = $('ss-wh-f');
+    if (whEl && whEl.options.length <= 1) {
+      _whs.forEach(w => { const o = document.createElement('option'); o.value = w._id; o.textContent = `${w.name} (${w.code})`; whEl.appendChild(o); });
+    }
+    // Populate category filter
+    const catEl = $('ss-cat-f');
+    if (catEl && catEl.options.length <= 1 && _cats.length) {
+      _cats.forEach(c => { const o = document.createElement('option'); o.value = c.name; o.textContent = c.name; catEl.appendChild(o); });
+    }
+
+    const d = await api('GET', url);
+    _summaryData = d.data || [];
+
+    // KPI cards
+    const totalValue = d.meta?.totalStockValue || 0;
+    const belowReorder = d.meta?.belowReorderCount || 0;
+    const zeroStock = _summaryData.filter(s => s.stock <= 0).length;
+    $('sk-items').textContent = d.meta?.totalItems || 0;
+    $('sk-value').textContent = inr(totalValue);
+    $('sk-reorder').textContent = belowReorder;
+    $('sk-zero').textContent = zeroStock;
+
+    filterSummary();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function filterSummary() {
+  const q = (gv('ss-q') || '').toLowerCase();
+  const cat = selV('ss-cat-f');
+  const reorderOnly = selV('ss-reorder-f') === 'true';
+
+  let list = _summaryData.filter(s => {
+    if (q && !s.itemName?.toLowerCase().includes(q) && !s.itemCode?.toLowerCase().includes(q)) return false;
+    if (cat && s.categoryName !== cat) return false;
+    if (reorderOnly && !s.isBelowReorder) return false;
+    return true;
+  });
+
+  $('ss-count').textContent = `${list.length} item${list.length !== 1 ? 's' : ''}`;
+  const tbody = $('ss-tbody');
+  tbody.innerHTML = list.length ? list.map(s => `<tr>
+    <td class="tdm">${s.itemCode || '—'}</td>
+    <td><strong>${s.itemName}</strong></td>
+    <td class="tdd">${s.categoryName || '—'}</td>
+    <td class="tdd">${s.warehouseName || '—'}</td>
+    <td class="tdm" style="text-align:right;font-weight:600;color:${s.stock <= 0 ? 'var(--danger)' : s.isBelowReorder ? 'var(--warning)' : 'var(--success)'}">${s.stock}</td>
+    <td class="tdm tdd" style="text-align:right">${s.reorderQty || 0}</td>
+    <td class="tdm" style="text-align:right">${inr(s.stockValue)}</td>
+    <td>${s.stock <= 0 ? '<span class="bdg b-rejected">Out of Stock</span>' : s.isBelowMin ? '<span class="bdg b-pending">Below Min</span>' : s.isBelowReorder ? '<span class="bdg b-pending">Low Stock</span>' : '<span class="bdg b-active">OK</span>'}</td>
+    <td class="tda">
+      <button class="btn btn-sm btn-ghost" onclick="viewItemLedger('${s.itemId}','${s.itemName}')" title="View ledger"><i class="fa-solid fa-scroll"></i></button>
+    </td>
+  </tr>`).join('') : `<tr><td colspan="9"><div class="empty"><div class="ei"><i class="fa-solid fa-cubes"></i></div><div class="et">No stock data</div><div class="es">Post a GRN or opening stock to see data here</div></div></td></tr>`;
+}
+
+function viewItemLedger(itemId, itemName) {
+  navTo('pg-stock-ledger');
+  setTimeout(() => {
+    const sel = $('sl-item');
+    if (sel) { sel.value = itemId; if (!sel.value) { const o = document.createElement('option'); o.value = itemId; o.textContent = itemName; sel.appendChild(o); sel.value = itemId; } }
+    loadLedger();
+  }, 300);
+}
+
+// ═══════════════════════════════════════════
+//  STOCK LEDGER
+// ═══════════════════════════════════════════
+async function setupLedgerPage() {
+  await prefetch();
+  // Populate item select
+  const iEl = $('sl-item');
+  if (iEl && iEl.options.length <= 1 && _items.length) {
+    _items.forEach(i => { const o = document.createElement('option'); o.value = i._id; o.textContent = `${i.itemCode} · ${i.name}`; iEl.appendChild(o); });
+  } else if (iEl && iEl.options.length <= 1) {
+    const d = await api('GET', '/masters/items?limit=200&isActive=true').catch(() => ({ data: [] }));
+    _items = d.data || [];
+    _items.forEach(i => { const o = document.createElement('option'); o.value = i._id; o.textContent = `${i.itemCode} · ${i.name}`; iEl.appendChild(o); });
+  }
+  // Populate warehouse select
+  const wEl = $('sl-wh');
+  if (wEl && wEl.options.length <= 1 && _whs.length) {
+    _whs.forEach(w => { const o = document.createElement('option'); o.value = w._id; o.textContent = `${w.name} (${w.code})`; wEl.appendChild(o); });
+  }
+}
+
+async function loadLedger() {
+  const itemId = selV('sl-item');
+  if (!itemId) return;
+  $('sl-tbody').innerHTML = '<tr><td colspan="9" class="lc"><span class="spin"></span></td></tr>';
+  let url = `/stock/ledger?itemId=${itemId}&limit=100`;
+  const wh = selV('sl-wh'), from = gv('sl-from'), to = gv('sl-to'), type = selV('sl-type');
+  if (wh) url += `&warehouseId=${wh}`;
+  if (from) url += `&fromDate=${from}`;
+  if (to) url += `&toDate=${to}`;
+  if (type) url += `&txnType=${type}`;
+  try {
+    const d = await api('GET', url);
+    const entries = d.data || [];
+    const txnColors = { grn:'var(--success)', issue:'var(--danger)', return:'var(--brand)', opening:'var(--purple)', adj_add:'var(--success)', adj_sub:'var(--danger)', transfer_in:'var(--accent)', transfer_out:'var(--warning)' };
+    $('sl-tbody').innerHTML = entries.length ? entries.map(e => `<tr>
+      <td class="tdd">${fmtDT(e.txnDate)}</td>
+      <td><span style="background:${txnColors[e.txnType]||'var(--muted)'};color:#fff;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap">${e.txnType.replace(/_/g,' ').toUpperCase()}</span></td>
+      <td class="tdm">${e.refDocNo || '—'}</td>
+      <td class="tdd">${e.departmentId?.name || '—'}</td>
+      <td class="tdd">${e.warehouseId?.name || '—'}</td>
+      <td class="tdm" style="text-align:right;color:var(--success)">${e.qty > 0 ? '+' + e.qty : '—'}</td>
+      <td class="tdm" style="text-align:right;color:var(--danger)">${e.qty < 0 ? Math.abs(e.qty) : '—'}</td>
+      <td class="tdm" style="text-align:right;font-weight:600;color:${e.runningBalance <= 0 ? 'var(--danger)' : 'var(--ink)'}">${e.runningBalance}</td>
+      <td class="tdm tdd">${e.unitRate ? inr(e.unitRate) : '—'}</td>
+    </tr>`).join('') : `<tr><td colspan="9"><div class="empty"><div class="ei"><i class="fa-solid fa-scroll"></i></div><div class="et">No ledger entries</div><div class="es">No transactions found for the selected filters</div></div></td></tr>`;
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════
+//  SIVs
+// ═══════════════════════════════════════════
+async function loadSIVs() {
+  const tbody = $('siv-tbody'); if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" class="lc"><span class="spin"></span></td></tr>';
+  const sf = selV('siv-sf'), df = selV('siv-df');
+  let url = '/stock/sivs?limit=50';
+  if (sf) url += `&status=${sf}`;
+  if (df) url += `&departmentId=${df}`;
+  try {
+    // Populate dept filter
+    if (_depts.length === 0) await prefetch();
+    const dEl = $('siv-df');
+    if (dEl && dEl.options.length <= 1 && _depts.length) {
+      _depts.forEach(d => { const o = document.createElement('option'); o.value = d._id; o.textContent = d.name; dEl.appendChild(o); });
+    }
+    const d = await api('GET', url);
+    const sivs = d.data || [];
+    tbody.innerHTML = sivs.length ? sivs.map(siv => `<tr>
+      <td class="tdm">${siv.sivNumber}</td>
+      <td>${siv.departmentId?.name || '—'}</td>
+      <td class="tdd">${siv.lines?.length || 0} item${siv.lines?.length !== 1 ? 's' : ''}</td>
+      <td class="tdd">${siv.purpose || '—'}</td>
+      <td>${bdg(siv.status)}</td>
+      <td class="tdd">${siv.issuedAt ? fmtDT(siv.issuedAt) : '—'}</td>
+      <td class="tdd">${fmtD(siv.createdAt)}</td>
+      <td class="tda">
+        ${siv.status === 'draft' ? `<button class="btn btn-sm btn-primary" onclick="submitSIV('${siv._id}','${siv.sivNumber}')">Submit</button>` : ''}
+        ${siv.status === 'pending' ? `<button class="btn btn-sm btn-success" onclick="actOn('siv','${siv._id}','approve')"><i class="fa-solid fa-check"></i></button><button class="btn btn-sm btn-danger" onclick="actOn('siv','${siv._id}','reject')"><i class="fa-solid fa-xmark"></i></button>` : ''}
+        ${siv.status === 'approved' && !siv.issuedAt ? `<button class="btn btn-sm btn-success" onclick="openIssueModal('${siv._id}')"><i class="fa-solid fa-boxes-stacked"></i> Issue</button>` : ''}
+        ${siv.status === 'approved' && siv.issuedAt ? `<span class="bdg b-active" style="font-size:10px">Issued</span>` : ''}
+      </td>
+    </tr>`).join('') : `<tr><td colspan="8"><div class="empty"><div class="ei"><i class="fa-solid fa-boxes-stacked"></i></div><div class="et">No stock indents</div><div class="es">Raise a stock indent to request items from the store</div><button class="btn btn-primary" onclick="openSIVModal()">New Indent</button></div></td></tr>`;
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function openSIVModal() {
+  await prefetch(); fillSelects();
+  // populate dept/wh selects in siv modal
+  const dEl = $('siv-dept'); if (dEl) { dEl.innerHTML = '<option value="">Select…</option>' + _depts.map(d => `<option value="${d._id}">${d.name}</option>`).join(''); }
+  const wEl = $('siv-wh'); if (wEl) { wEl.innerHTML = '<option value="">Select…</option>' + _whs.map(w => `<option value="${w._id}">${w.name} (${w.code})</option>`).join(''); }
+  $('siv-lines').innerHTML = ''; addSIVLine();
+  sv('siv-purpose', '');
+  openM('m-siv');
+}
+
+function addSIVLine() {
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td><select class="lin sivitem" style="min-width:190px"><option value="">Select item…</option>${_items.map(i => `<option value="${i._id}" data-uom="${i.uomId?._id || i.uomId || ''}">${i.itemCode} · ${i.name}</option>`).join('')}</select></td>
+    <td><select class="lin sivuom" style="min-width:70px"><option value="">—</option>${_uoms.map(u => `<option value="${u._id}">${u.code}</option>`).join('')}</select></td>
+    <td><input type="number" class="lin sivqty" placeholder="Qty" min="0.01" step="0.01"></td>
+    <td><span class="sivavail tdd" style="font-size:12px;padding:4px">—</span></td>
+    <td><input type="text" class="lin" placeholder="Remarks"></td>
+    <td><button class="rml" onclick="this.closest('tr').remove()"><i class="fa-solid fa-minus"></i></button></td>
+  `;
+  row.querySelector('.sivitem').addEventListener('change', async function () {
+    const opt = this.options[this.selectedIndex];
+    const tr = this.closest('tr');
+    if (opt.dataset.uom) tr.querySelector('.sivuom').value = opt.dataset.uom;
+    // Fetch current stock
+    const avEl = tr.querySelector('.sivavail');
+    const whId = selV('siv-wh');
+    if (this.value && whId) {
+      avEl.textContent = '…';
+      try {
+        const d = await api('GET', `/stock/item-stock/${this.value}`);
+        const whStock = d.data?.stockByWarehouse?.find(s => String(s._id) === whId);
+        avEl.textContent = whStock ? whStock.stock : '0';
+        avEl.style.color = (whStock?.stock || 0) <= 0 ? 'var(--danger)' : 'var(--success)';
+      } catch { avEl.textContent = '—'; }
+    }
+  });
+  if (!_items.length) {
+    api('GET', '/masters/items?limit=200&isActive=true').then(d => {
+      _items = d.data || [];
+      document.querySelectorAll('.sivitem').forEach(s => {
+        s.innerHTML = '<option value="">Select item…</option>' + _items.map(i => `<option value="${i._id}" data-uom="${i.uomId?._id || i.uomId || ''}">${i.itemCode} · ${i.name}</option>`).join('');
+      });
+    }).catch(() => {});
+  }
+  $('siv-lines').appendChild(row);
+}
+
+async function saveSIV(doSubmit) {
+  const deptId = selV('siv-dept'), whId = selV('siv-wh');
+  if (!deptId || !whId) { toast('Department and warehouse required', 'err'); return; }
+  const lines = [...$('siv-lines').querySelectorAll('tr')].map(row => ({
+    itemId: row.querySelector('.sivitem')?.value,
+    uomId: row.querySelector('.sivuom')?.value,
+    warehouseId: whId,
+    requestedQty: Number(row.querySelector('.sivqty')?.value) || 0,
+    remarks: row.querySelectorAll('.lin')[4]?.value || undefined,
+  })).filter(l => l.itemId && l.uomId && l.requestedQty > 0);
+  if (!lines.length) { toast('Add at least one item with qty', 'err'); return; }
+  try {
+    const siv = await api('POST', '/stock/sivs', { departmentId: deptId, warehouseId: whId, purpose: gv('siv-purpose') || undefined, lines });
+    if (doSubmit) await api('POST', `/stock/sivs/${siv.data._id}/submit`);
+    toast(`SIV ${doSubmit ? 'submitted' : 'saved'} — ${siv.data.sivNumber}`);
+    closeM('m-siv'); loadSIVs();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function submitSIV(id, num) {
+  if (!confirm(`Submit ${num} for approval?`)) return;
+  try { await api('POST', `/stock/sivs/${id}/submit`); toast(`${num} submitted`); loadSIVs(); }
+  catch (e) { toast(e.message, 'err'); }
+}
+
+// patch actOn to handle siv
+const _origActOn = actOn;
+actOn = function(dt, id, action) {
+  if (dt === 'siv') {
+    pendingAct = { dt, id, action };
+    $('actt').textContent = action === 'approve' ? 'Approve Indent' : 'Reject Indent';
+    $('actd').textContent = `Confirm ${action} of this stock indent?`;
+    $('actl').textContent = action === 'reject' ? 'Reason *' : 'Remarks (optional)';
+    $('actbtn').className = `btn ${action === 'approve' ? 'btn-success' : 'btn-danger'}`;
+    $('actbtn').innerHTML = `<i class="fa-solid fa-${action === 'approve' ? 'check' : 'xmark'}"></i> ${action === 'approve' ? 'Approve' : 'Reject'}`;
+    sv('actr', ''); openM('m-action');
+  } else { _origActOn(dt, id, action); }
+};
+
+// patch confirmAct to handle siv
+const _origConfirmAct = confirmAct;
+confirmAct = async function() {
+  if (pendingAct?.dt === 'siv') {
+    const { id, action } = pendingAct;
+    const reason = gv('actr');
+    if (action === 'reject' && !reason) { toast('Rejection reason required', 'err'); return; }
+    try {
+      await api('POST', `/stock/sivs/${id}/${action}`, { reason });
+      closeM('m-action'); toast(`SIV ${action}d`); sv('actr', ''); loadSIVs(); pendingAct = null;
+    } catch (e) { toast(e.message, 'err'); }
+  } else { _origConfirmAct(); }
+};
+
+let _currentSIVForIssue = null;
+
+async function openIssueModal(sivId) {
+  try {
+    const d = await api('GET', `/stock/sivs/${sivId}`);
+    const siv = d.data;
+    _currentSIVForIssue = siv;
+    $('issue-modal-title').textContent = `Issue Stock — ${siv.sivNumber}`;
+    $('issue-info').innerHTML = `
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div><span style="color:var(--muted);font-size:11px">DEPARTMENT</span><div style="font-weight:600;margin-top:2px">${siv.departmentId?.name || '—'}</div></div>
+        <div><span style="color:var(--muted);font-size:11px">PURPOSE</span><div style="font-weight:600;margin-top:2px">${siv.purpose || '—'}</div></div>
+        <div><span style="color:var(--muted);font-size:11px">RAISED BY</span><div style="font-weight:600;margin-top:2px">${siv.createdBy?.name || '—'}</div></div>
+      </div>
+    `;
+    // Build issue lines with live stock check
+    const lineRows = await Promise.all(siv.lines.map(async (line) => {
+      let avail = 0;
+      try {
+        const sd = await api('GET', `/stock/item-stock/${line.itemId?._id || line.itemId}`);
+        const whStock = sd.data?.stockByWarehouse?.find(s => String(s._id) === String(line.warehouseId?._id || line.warehouseId));
+        avail = whStock?.stock || 0;
+      } catch {}
+      return `<tr data-lid="${line._id}" data-iid="${line.itemId?._id || line.itemId}" data-wid="${line.warehouseId?._id || line.warehouseId}">
+        <td><strong>${line.itemId?.itemCode || ''}</strong> ${line.itemId?.name || 'Item'}<div class="tdd" style="font-size:11px">${line.warehouseId?.name || ''}</div></td>
+        <td class="tdm">${line.requestedQty} ${line.uomId?.code || ''}</td>
+        <td class="tdm" style="color:${avail <= 0 ? 'var(--danger)' : avail < line.requestedQty ? 'var(--warning)' : 'var(--success)';font-weight:600}">${avail}</td>
+        <td><input type="number" class="lin issue-qty" value="${Math.min(line.requestedQty, avail)}" min="0" max="${avail}" step="0.01" style="width:90px"></td>
+        <td><input type="text" class="lin" placeholder="Remarks" style="min-width:100px"></td>
+      </tr>`;
+    }));
+    $('issue-lines').innerHTML = lineRows.join('');
+    sv('issue-receiver', '');
+    openM('m-issue');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function confirmIssue() {
+  if (!_currentSIVForIssue) return;
+  const issuedLines = [...$('issue-lines').querySelectorAll('tr[data-lid]')].map(row => ({
+    lineId: row.dataset.lid,
+    issuedQty: Number(row.querySelector('.issue-qty')?.value) || 0,
+  })).filter(l => l.issuedQty > 0);
+  if (!issuedLines.length) { toast('Enter qty for at least one item', 'err'); return; }
+  const receivedBy = gv('issue-receiver');
+  try {
+    await api('POST', `/stock/sivs/${_currentSIVForIssue._id}/issue`, { issuedLines, receivedBy });
+    toast(`Stock issued — ${_currentSIVForIssue.sivNumber}`);
+    closeM('m-issue'); _currentSIVForIssue = null;
+    loadSIVs(); loadStockSummary();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════
+//  STOCK RETURNS
+// ═══════════════════════════════════════════
+async function loadReturns() {
+  const tbody = $('ret-tbody'); if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" class="lc"><span class="spin"></span></td></tr>';
+  try {
+    const d = await api('GET', '/stock/returns?limit=50');
+    const rets = d.data || [];
+    tbody.innerHTML = rets.length ? rets.map(r => `<tr>
+      <td class="tdm">${r.returnNumber}</td>
+      <td>${r.departmentId?.name || '—'}</td>
+      <td class="tdm tdd">${r.sivId?.sivNumber || '—'}</td>
+      <td class="tdd">${r.lines?.length || 0} item${r.lines?.length !== 1 ? 's' : ''}</td>
+      <td class="tdd">${fmtD(r.returnDate)}</td>
+      <td>${r.stockUpdated ? '<span class="bdg b-active">Posted</span>' : '<span class="bdg b-pending">Pending</span>'}</td>
+      <td class="tda"></td>
+    </tr>`).join('') : `<tr><td colspan="7"><div class="empty"><div class="ei"><i class="fa-solid fa-rotate-left"></i></div><div class="et">No returns</div><div class="es">Record items returned from departments</div><button class="btn btn-primary" onclick="openReturnModal()">New Return</button></div></td></tr>`;
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function openReturnModal() {
+  await prefetch();
+  const dEl = $('ret-dept'); if (dEl) dEl.innerHTML = '<option value="">Select…</option>' + _depts.map(d => `<option value="${d._id}">${d.name}</option>`).join('');
+  // Load issued SIVs for reference
+  const sivEl = $('ret-siv');
+  if (sivEl) {
+    sivEl.innerHTML = '<option value="">None — direct return</option>';
+    try {
+      const d = await api('GET', '/stock/sivs?status=approved&limit=50');
+      (d.data || []).filter(s => s.issuedAt).forEach(s => {
+        const o = document.createElement('option'); o.value = s._id; o.textContent = `${s.sivNumber} — ${s.departmentId?.name || ''}`;
+        sivEl.appendChild(o);
+      });
+    } catch {}
+  }
+  $('ret-lines').innerHTML = '';
+  sv('ret-remarks', '');
+  const today = new Date().toISOString().split('T')[0];
+  sv('ret-date', today);
+  addReturnLine();
+  openM('m-return');
+}
+
+function addReturnLine() {
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td><select class="lin retitem" style="min-width:180px"><option value="">Select item…</option>${_items.map(i => `<option value="${i._id}" data-uom="${i.uomId?._id || i.uomId || ''}">${i.itemCode} · ${i.name}</option>`).join('')}</select></td>
+    <td><select class="lin retwh" style="min-width:110px"><option value="">Select…</option>${_whs.map(w => `<option value="${w._id}">${w.name}</option>`).join('')}</select></td>
+    <td><input type="number" class="lin retqty" placeholder="Qty" min="0.01" step="0.01"></td>
+    <td><select class="lin retcond"><option value="good">Good</option><option value="damaged">Damaged</option><option value="unusable">Unusable</option></select></td>
+    <td><input type="text" class="lin" placeholder="Remarks"></td>
+    <td><button class="rml" onclick="this.closest('tr').remove()"><i class="fa-solid fa-minus"></i></button></td>
+  `;
+  row.querySelector('.retitem').addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+    if (opt.dataset.uom) { /* uom tracked internally */ }
+  });
+  $('ret-lines').appendChild(row);
+}
+
+async function saveReturn() {
+  const deptId = selV('ret-dept');
+  if (!deptId) { toast('Department required', 'err'); return; }
+  const lines = [...$('ret-lines').querySelectorAll('tr')].map(row => ({
+    itemId: row.querySelector('.retitem')?.value,
+    warehouseId: row.querySelector('.retwh')?.value,
+    uomId: _items.find(i => i._id === row.querySelector('.retitem')?.value)?.uomId?._id || row.querySelector('.retitem')?.value,
+    returnQty: Number(row.querySelector('.retqty')?.value) || 0,
+    condition: row.querySelector('.retcond')?.value || 'good',
+    remarks: row.querySelectorAll('.lin')[4]?.value || undefined,
+  })).filter(l => l.itemId && l.warehouseId && l.returnQty > 0);
+  if (!lines.length) { toast('Add at least one item', 'err'); return; }
+  try {
+    const d = await api('POST', '/stock/returns', { departmentId: deptId, sivId: selV('ret-siv') || undefined, lines, returnDate: gv('ret-date') || undefined, remarks: gv('ret-remarks') || undefined });
+    toast(d.message || 'Stock return posted');
+    closeM('m-return'); loadReturns(); loadStockSummary();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════
+//  LOW STOCK
+// ═══════════════════════════════════════════
+async function loadLowStock() {
+  const tbody = $('ls-tbody'); if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" class="lc"><span class="spin"></span></td></tr>';
+  try {
+    const d = await api('GET', '/stock/low-stock');
+    const list = d.data || [];
+    tbody.innerHTML = list.length ? list.map(item => `<tr>
+      <td class="tdm">${item.itemCode}</td>
+      <td><strong>${item.itemName}</strong></td>
+      <td class="tdd">${item.warehouseName || '—'}</td>
+      <td class="tdm" style="text-align:right;color:${item.currentStock <= 0 ? 'var(--danger)' : 'var(--warning)'};font-weight:600">${item.currentStock}</td>
+      <td class="tdm tdd" style="text-align:right">${item.reorderQty}</td>
+      <td class="tdm" style="text-align:right;color:var(--danger);font-weight:600">${item.shortage}</td>
+      <td class="tda">
+        <button class="btn btn-sm btn-primary" onclick="navTo('pg-prs');setTimeout(openPRModal,200)" title="Raise PR"><i class="fa-solid fa-file-circle-plus"></i></button>
+      </td>
+    </tr>`).join('') : `<tr><td colspan="7"><div class="empty"><div class="ei"><i class="fa-solid fa-check-circle"></i></div><div class="et">No low stock alerts</div><div class="es">All items are above reorder level</div></div></td></tr>`;
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════
+//  OPENING STOCK
+// ═══════════════════════════════════════════
+async function openOpeningStockModal() {
+  await prefetch();
+  $('os-lines').innerHTML = ''; addOSLine();
+  const today = new Date().toISOString().split('T')[0];
+  sv('os-date', today); sv('os-remarks', '');
+  openM('m-opening-stock');
+}
+
+function addOSLine() {
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td><select class="lin ositem" style="min-width:185px"><option value="">Select item…</option>${_items.map(i => `<option value="${i._id}" data-uom="${i.uomId?._id || i.uomId || ''}">${i.itemCode} · ${i.name}</option>`).join('')}</select></td>
+    <td><select class="lin oswh" style="min-width:110px"><option value="">Select…</option>${_whs.map(w => `<option value="${w._id}">${w.name}</option>`).join('')}</select></td>
+    <td><select class="lin osuom" style="min-width:70px"><option value="">—</option>${_uoms.map(u => `<option value="${u._id}">${u.code}</option>`).join('')}</select></td>
+    <td><input type="number" class="lin osqty" placeholder="Qty" min="0" step="0.01"></td>
+    <td><input type="number" class="lin osrate" placeholder="Rate" min="0"></td>
+    <td><button class="rml" onclick="this.closest('tr').remove()"><i class="fa-solid fa-minus"></i></button></td>
+  `;
+  row.querySelector('.ositem').addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+    if (opt.dataset.uom) this.closest('tr').querySelector('.osuom').value = opt.dataset.uom;
+  });
+  $('os-lines').appendChild(row);
+}
+
+async function saveOpeningStock() {
+  const asOfDate = gv('os-date');
+  if (!asOfDate) { toast('As-of date is required', 'err'); return; }
+  const lines = [...$('os-lines').querySelectorAll('tr')].map(row => ({
+    itemId: row.querySelector('.ositem')?.value,
+    warehouseId: row.querySelector('.oswh')?.value,
+    uomId: row.querySelector('.osuom')?.value,
+    qty: Number(row.querySelector('.osqty')?.value) || 0,
+    unitRate: Number(row.querySelector('.osrate')?.value) || 0,
+  })).filter(l => l.itemId && l.warehouseId && l.uomId && l.qty > 0);
+  if (!lines.length) { toast('Add at least one item with qty', 'err'); return; }
+  if (!confirm(`Post opening stock for ${lines.length} item(s) as of ${asOfDate}? This cannot be undone.`)) return;
+  try {
+    const d = await api('POST', '/stock/opening', { asOfDate, lines, remarks: gv('os-remarks') || undefined });
+    toast(d.message || 'Opening stock posted');
+    closeM('m-opening-stock'); loadStockSummary();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ─── patch dashboard quick actions to include stock ───
+const _origLoadDash = loadDash;
+loadDash = async function() {
+  await _origLoadDash();
+  // Add low stock to dashboard
+  try {
+    const d = await api('GET', '/stock/low-stock');
+    const count = d.data?.length || 0;
+    if (count > 0) {
+      const badge = $('pabdg');
+      if (badge) {
+        const cur = parseInt(badge.textContent) || 0;
+        badge.textContent = cur + count;
+      }
+    }
+  } catch {}
+};
 
 // ── AUTO LOGIN ────────────────────────────────────────
 if(tok&&me){
