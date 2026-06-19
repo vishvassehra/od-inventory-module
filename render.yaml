@@ -1,0 +1,40 @@
+# render.yaml — Render Blueprint
+# Defines the service so Render can auto-deploy from this repo
+
+services:
+  - type: web
+    name: od-inventory-module
+    runtime: node
+    region: singapore   # closest to India
+    plan: starter       # upgrade to standard when load warrants
+
+    buildCommand: npm ci
+    startCommand: npm start
+
+    healthCheckPath: /health
+
+    # Auto-deploy on push to main
+    autoDeploy: true
+    branch: main
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000           # Render uses 10000 internally
+      - key: LOG_LEVEL
+        value: info
+
+      # These are SECRET — set in Render dashboard, not here
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: SA_EMAIL
+        sync: false
+      - key: SA_PASSWORD
+        sync: false
