@@ -1,1 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OD Inventory — ERP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0F1117;--surface:#F7F8FA;--panel:#FFFFFF;
+  --brand:#2563EB;--brand-dim:#EFF6FF;--brand-hover:#1D4ED8;
+  --accent:#0EA5E9;--success:#10B981;--warning:#F59E0B;--danger:#EF4444;--purple:#8B5CF6;
+  --border:#E2E8F0;--border-s:#CBD5E1;--muted:#64748B;--muted-l:#94A3B8;
+  --r:8px;--rl:12px;--rs:4px;
+  --sh:0 1px 3px rgba(0,0,0,.08);--shm:0 4px 12px rgba(0,0,0,.09);--shl:0 8px 24px rgba(0,0,0,.10);
+}
+html,body{height:100%;font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);background:var(--surface);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit}
+button{cursor:pointer}
+.mono{font-family:'JetBrains Mono',monospace}
+.hidden{display:none!important}
 
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 16px;border-radius:var(--r);font-size:13px;font-weight:500;border:none;transition:all .15s;white-space:nowrap;cursor:pointer}
+.btn-primary{background:var(--brand);color:#fff}.btn-primary:hover{background:var(--brand-hover)}.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-secondary{background:var(--panel);color:var(--ink);border:1.5px solid var(--border)}.btn-secondary:hover{background:var(--surface)}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#DC2626}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#059669}
+.btn-ghost{background:transparent;color:var(--muted);border:none}.btn-ghost:hover{background:var(--surface);color:var(--ink)}
+.btn-sm{height:28px;padding:0 10px;font-size:12px}
+.btn-lg{height:44px;padding:0 24px;font-size:14px}
+.btn-full{width:100%}
+.btn-icon{width:32px;height:32px;padding:0;border-radius:var(--rs)}
+
+/* FORMS */
+.fg{margin-bottom:16px}
+.fl{display:block;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:5px}
+.fh{font-size:11px;color:var(--muted);margin-top:4px}
+.inp{width:100%;height:40px;padding:0 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;color:var(--ink);background:var(--panel);outline:none;transition:border-color .15s,box-shadow .15s}
+.inp:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2364748B' d='M5 7L0 2h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.txa{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;color:var(--ink);background:var(--panel);outline:none;resize:vertical;min-height:72px;transition:border-color .15s;font-family:inherit}
+.txa:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.sec{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:8px;margin:20px 0 14px}
+
+/* BADGES */
+.bdg{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.bdg::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.b-active{background:#D1FAE5;color:#065F46}.b-inactive{background:#F1F5F9;color:#64748B}
+.b-school{background:#EDE9FE;color:#5B21B6}.b-college{background:#DBEAFE;color:#1E40AF}.b-university{background:#D1FAE5;color:#065F46}
+.b-draft{background:#F1F5F9;color:#475569}.b-pending{background:#FEF3C7;color:#92400E}.b-approved{background:#D1FAE5;color:#065F46}.b-rejected{background:#FEE2E2;color:#991B1B}
+.b-confirmed{background:#D1FAE5;color:#065F46}.b-sent{background:#DBEAFE;color:#1E40AF}.b-partial{background:#FEF3C7;color:#92400E}.b-closed{background:#E0E7FF;color:#3730A3}
+.b-posted{background:#D1FAE5;color:#065F46}.b-cancelled{background:#F1F5F9;color:#64748B}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(15,17,23,.5);backdrop-filter:blur(2px);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}
+.ov.show{display:flex}
+.modal{background:var(--panel);border-radius:var(--rl);width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:var(--shl);animation:mi .18s ease}
+@keyframes mi{from{opacity:0;transform:translateY(-10px) scale(.98)}to{opacity:1;transform:none}}
+.msm{max-width:440px}.mmd{max-width:600px}.mlg{max-width:760px}.mxl{max-width:920px}
+.mhd{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.mtitle{font-size:15px;font-weight:600}
+.mx{width:28px;height:28px;border-radius:var(--rs);background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center}
+.mx:hover{background:var(--surface);color:var(--ink)}
+.mbody{padding:24px;overflow-y:auto;flex:1}
+.mft{padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0}
+
+/* TOAST */
+.tw{position:fixed;bottom:24px;right:24px;z-index:200;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:#1e293b;color:#fff;padding:11px 16px;border-radius:var(--r);font-size:13px;display:flex;align-items:center;gap:10px;box-shadow:var(--shl);animation:tin .2s ease;pointer-events:auto;min-width:220px}
+.toast.ok{background:#064E3B;border-left:3px solid var(--success)}
+.toast.err{background:#7F1D1D;border-left:3px solid var(--danger)}
+.toast.warn{background:#78350F;border-left:3px solid var(--warning)}
+@keyframes tin{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+
+/* SPINNER / EMPTY */
+.spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(37,99,235,.2);border-top-color:var(--brand);border-radius:50%;animation:rot .6s linear infinite}
+.spinw{border-color:rgba(255,255,255,.3);border-top-color:#fff}
+@keyframes rot{to{transform:rotate(360deg)}}
+.lc{text-align:center;padding:40px;color:var(--muted)}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 24px;text-align:center}
+.ei{font-size:36px;color:var(--border-s);margin-bottom:14px}
+.et{font-size:14px;font-weight:600;margin-bottom:6px}
+.es{font-size:13px;color:var(--muted);max-width:260px;line-height:1.6;margin-bottom:18px}
+
+/* LOGIN */
+#lv{position:fixed;inset:0;display:flex}
+.ll{flex:0 0 450px;background:linear-gradient(150deg,#0a0f1e 0%,#0f172a 50%,#0a0f1e 100%);padding:52px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.ll::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 25% 65%,rgba(37,99,235,.22) 0%,transparent 55%),radial-gradient(ellipse at 75% 20%,rgba(14,165,233,.12) 0%,transparent 50%)}
+.llo{position:relative;display:flex;align-items:center;gap:12px}
+.llobox{width:38px;height:38px;background:var(--brand);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px}
+.llon{font-size:17px;font-weight:700;color:#fff}
+.llosub{font-size:11px;color:rgba(255,255,255,.35);margin-top:1px}
+.llb{position:relative}
+.llh{font-size:28px;font-weight:700;color:#fff;line-height:1.25;margin-bottom:14px;letter-spacing:-.01em}
+.llh em{color:var(--accent);font-style:normal}
+.lld{font-size:13px;color:rgba(255,255,255,.45);line-height:1.75;max-width:320px}
+.lls{position:relative;display:flex;gap:28px;margin-top:32px}
+.llsn{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:500;color:#fff}
+.llsl{font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.llf{position:relative;font-size:11px;color:rgba(255,255,255,.2)}
+.lr{flex:1;display:flex;align-items:center;justify-content:center;padding:48px}
+.lcard{width:100%;max-width:380px}
+.ley{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--brand);margin-bottom:8px}
+.lti{font-size:24px;font-weight:700;margin-bottom:3px}
+.lsu{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.5}
+.lerr{background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--r);padding:10px 14px;font-size:13px;color:#991B1B;display:none;gap:8px;align-items:center;margin-bottom:14px}
+.lerr.show{display:flex}
+
+/* SHELL */
+#av{position:fixed;inset:0;display:flex;display:none}
+.sb{width:234px;flex-shrink:0;background:var(--ink);display:flex;flex-direction:column;height:100%}
+.sbt{padding:14px;border-bottom:1px solid rgba(255,255,255,.07)}
+.sbb{display:flex;align-items:center;gap:9px}
+.sbbx{width:30px;height:30px;background:var(--brand);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
+.sbbn{font-size:13px;font-weight:700;color:#fff}
+.sbbsub{font-size:10px;color:rgba(255,255,255,.3);margin-top:1px}
+.sbws{padding:8px 10px;margin:8px;background:rgba(255,255,255,.05);border-radius:var(--r)}
+.sbwsl{font-size:10px;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.sbwsn{font-size:12px;font-weight:600;color:rgba(255,255,255,.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbwsr{font-size:10px;color:rgba(255,255,255,.38);margin-top:1px}
+.sbn{flex:1;overflow-y:auto;padding:6px 8px}
+.sbn::-webkit-scrollbar{width:3px}
+.sbn::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+.sbgl{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.2);padding:10px 8px 4px}
+.sbi{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:6px;cursor:pointer;color:rgba(255,255,255,.48);font-size:13px;font-weight:500;transition:all .12s;margin-bottom:1px;user-select:none}
+.sbi:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.82)}
+.sbi.on{background:rgba(37,99,235,.28);color:#fff}
+.sbi.on .sic{color:var(--accent)}
+.sic{font-size:13px;width:15px;text-align:center;flex-shrink:0}
+.sbf{padding:10px;border-top:1px solid rgba(255,255,255,.07)}
+.sbu{display:flex;align-items:center;gap:9px;padding:7px;border-radius:var(--r);cursor:pointer}
+.sbu:hover{background:rgba(255,255,255,.05)}
+.sbav{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0}
+.sbun{font-size:12px;font-weight:500;color:rgba(255,255,255,.75)}
+.sbue{font-size:10px;color:rgba(255,255,255,.32);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+.sblo{margin-left:auto;color:rgba(255,255,255,.28);font-size:13px;background:none;border:none;cursor:pointer;padding:4px}
+.sblo:hover{color:var(--danger)}
+.mn{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.tb{height:54px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:10px;flex-shrink:0}
+.tbt{font-size:15px;font-weight:600}
+.tba{margin-left:auto;display:flex;gap:8px;align-items:center}
+.ct{flex:1;overflow-y:auto;padding:24px}
+.ct::-webkit-scrollbar{width:5px}
+.ct::-webkit-scrollbar-thumb{background:var(--border-s);border-radius:3px}
+
+/* PAGE */
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;gap:16px;flex-wrap:wrap}
+.pt{font-size:19px;font-weight:700}
+.ps{font-size:13px;color:var(--muted);margin-top:2px}
+.pac{display:flex;gap:8px;align-items:center}
+
+/* KPI */
+.krow{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:14px;margin-bottom:22px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi.kbl::before{background:var(--brand)}.kpi.kgr::before{background:var(--success)}.kpi.kor::before{background:var(--warning)}.kpi.kpu::before{background:var(--purple)}.kpi.kre::before{background:var(--danger)}
+.kl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px}
+.kv{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:500;line-height:1}
+.km{font-size:12px;color:var(--muted);margin-top:5px}
+.ki{position:absolute;top:18px;right:18px;font-size:20px;opacity:.09}
+
+/* CARD */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--rl)}
+.chd{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.ct2{font-size:13px;font-weight:600}
+.cbody{padding:18px}
+
+/* TABLE */
+.tw2{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{padding:9px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1.5px solid var(--border);white-space:nowrap;background:var(--surface)}
+tbody td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#FAFBFD}
+.tdm{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500}
+.tdd{color:var(--muted)}
+.tda{display:flex;gap:5px;justify-content:flex-end}
+
+/* FILTERS */
+.fbar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.fs{height:30px;padding:0 10px 0 28px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:12px;outline:none;min-width:180px;background:var(--panel);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:9px center;color:var(--ink)}
+.fs:focus{border-color:var(--brand)}
+.fsel{height:30px;padding:0 22px 0 8px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:12px;outline:none;background:var(--panel);color:var(--ink);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 10 10'%3E%3Cpath fill='%2364748B' d='M5 7L0 2h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center}
+.fsel:focus{border-color:var(--brand)}
+.fct{margin-left:auto;font-size:12px;color:var(--muted)}
+
+/* INSTANCE GRID */
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:14px}
+.ic{background:var(--panel);border:1.5px solid var(--border);border-radius:var(--rl);padding:18px;cursor:pointer;transition:all .15s}
+.ic:hover{border-color:var(--brand);box-shadow:var(--shm);transform:translateY(-1px)}
+.ic.off{opacity:.55}
+.ict{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.icav{width:42px;height:42px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+.icn{font-size:14px;font-weight:600;margin:2px 0}
+.icid{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+.ics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.icsv{font-size:16px;font-weight:600}
+.icsl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
+.icf{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+
+/* LINE ITEMS */
+.ltbl{width:100%;border-collapse:collapse;font-size:12px}
+.ltbl th{background:var(--surface);padding:7px 9px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--border)}
+.ltbl td{padding:4px 6px;border-bottom:1px solid var(--border);vertical-align:middle}
+.ltbl tr:last-child td{border-bottom:none}
+.lin{width:100%;border:1.5px solid var(--border);border-radius:4px;padding:5px 8px;font-size:12px;font-family:inherit;outline:none;background:var(--panel);color:var(--ink)}
+.lin:focus{border-color:var(--brand)}
+.addl{display:flex;align-items:center;gap:5px;padding:8px 0 0;font-size:12px;color:var(--brand);font-weight:500;cursor:pointer;background:none;border:none}
+.addl:hover{text-decoration:underline}
+.rml{color:var(--danger);cursor:pointer;font-size:13px;padding:4px;background:none;border:none;opacity:.7}
+.rml:hover{opacity:1}
+
+/* DASH */
+.dg{display:grid;grid-template-columns:1fr 310px;gap:18px}
+.qai{display:flex;align-items:center;gap:11px;padding:10px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+.qai:hover{background:var(--surface)}
+.qai:last-child{border-bottom:none}
+.qaico{width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px}
+.pai{display:flex;align-items:center;gap:11px;padding:11px 18px;border-bottom:1px solid var(--border)}
+.pai:last-child{border-bottom:none}
+.pad{font-size:12px;font-weight:500;font-family:'JetBrains Mono',monospace}
+.pam{font-size:11px;color:var(--muted);margin-top:1px}
+.pdot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.pu{background:var(--danger)}.pn{background:var(--success)}.pl{background:var(--muted-l)}
+
+@media(max-width:768px){
+  .ll{display:none}
+  .dg{grid-template-columns:1fr}
+  .r2,.r3{grid-template-columns:1fr}
+  .krow{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="lv">
+  <div class="ll">
+    <div class="llo">
+      <div class="llobox"><i class="fa-solid fa-boxes-stacked"></i></div>
+      <div><div class="llon">OD Inventory</div><div class="llosub">Okie Dokie ERP Suite</div></div>
+    </div>
+    <div class="llb">
+      <div class="llh">Inventory control<br>built for <em>education</em></div>
+      <div class="lld">From purchase requisitions to physical verification — every asset, every movement, every institution unified.</div>
+      <div class="lls">
+        <div><div class="llsn">PR→GRN</div><div class="llsl">Full Purchase Flow</div></div>
+        <div><div class="llsn">6</div><div class="llsl">Role Levels</div></div>
+        <div><div class="llsn">∞</div><div class="llsl">Institutions</div></div>
+      </div>
+    </div>
+    <div class="llf">© 2025 Okie Dokie Solutions · okiedokie.com</div>
+  </div>
+  <div class="lr">
+    <div class="lcard">
+      <div class="ley">Secure Access</div>
+      <div class="lti">Sign in</div>
+      <div class="lsu">Access your inventory workspace</div>
+      <div class="lerr" id="lerr"><i class="fa-solid fa-circle-exclamation"></i><span id="lerrmsg">Invalid credentials</span></div>
+      <div class="fg"><label class="fl">Email address</label><input type="email" id="lemail" class="inp" placeholder="you@school.edu.in" autocomplete="email"></div>
+      <div class="fg"><label class="fl">Password</label><input type="password" id="lpass" class="inp" placeholder="••••••••"></div>
+      <div class="fg">
+        <label class="fl">Institution ID <span style="font-weight:400;color:var(--muted)">(leave blank for Super Admin)</span></label>
+        <input type="text" id="ltenant" class="inp" placeholder="e.g. stmarks-001">
+        <div class="fh">Your institution's unique ID. Ask your administrator if unsure.</div>
+      </div>
+      <button class="btn btn-primary btn-lg btn-full" id="lbtn" onclick="doLogin()">
+        <span id="lbtxt">Sign in</span>
+        <span id="lbspin" class="hidden"><span class="spin spinw"></span></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="av">
+  <div class="sb">
+    <div class="sbt">
+      <div class="sbb">
+        <div class="sbbx"><i class="fa-solid fa-boxes-stacked"></i></div>
+        <div><div class="sbbn">OD Inventory</div><div class="sbbsub">ERP Suite</div></div>
+      </div>
+    </div>
+    <div class="sbws">
+      <div class="sbwsl">Workspace</div>
+      <div class="sbwsn" id="wsname">—</div>
+      <div class="sbwsr" id="wsrole">—</div>
+    </div>
+    <nav class="sbn" id="sidenav"></nav>
+    <div class="sbf">
+      <div class="sbu">
+        <div class="sbav" id="sbav">?</div>
+        <div style="flex:1;min-width:0"><div class="sbun" id="sbun">—</div><div class="sbue" id="sbue">—</div></div>
+        <button class="sblo" onclick="logout()" title="Sign out"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </div>
+  </div>
+  <div class="mn">
+    <div class="tb">
+      <span class="tbt" id="tbt">—</span>
+      <div class="tba">
+        <button class="btn btn-ghost btn-icon" onclick="reloadPg()" title="Refresh"><i class="fa-solid fa-rotate"></i></button>
+        <button class="btn btn-ghost btn-icon"><i class="fa-regular fa-bell"></i></button>
+      </div>
+    </div>
+    <div class="ct">
+
+      <!-- INSTANCES -->
+      <div class="page hidden" id="pg-instances">
+        <div class="ph">
+          <div><div class="pt">Institutions</div><div class="ps">All institution instances on this platform</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openM('m-newinst')"><i class="fa-solid fa-plus"></i> New Institution</button></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
+          <input class="fs" placeholder="Search name or ID…" oninput="renderInst()">
+          <select class="fsel" id="itypef" onchange="renderInst()"><option value="">All Types</option><option value="school">School</option><option value="college">College</option><option value="university">University</option></select>
+          <select class="fsel" id="iactf" onchange="renderInst()"><option value="">All Status</option><option value="true">Active</option><option value="false">Inactive</option></select>
+          <span class="fct" id="ict"></span>
+        </div>
+        <div class="ig" id="instgrid"><div style="grid-column:1/-1;text-align:center;padding:60px"><span class="spin"></span></div></div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div class="page hidden" id="pg-dashboard">
+        <div class="ph">
+          <div><div class="pt" id="dashgreet">Dashboard</div><div class="ps" id="dashmeta">—</div></div>
+          <div class="pac"><button class="btn btn-secondary btn-sm" onclick="loadDash()"><i class="fa-solid fa-rotate"></i> Refresh</button></div>
+        </div>
+        <div class="krow" id="krow"></div>
+        <div class="dg">
+          <div class="card">
+            <div class="chd"><span class="ct2">Pending Approvals</span><span class="bdg b-pending" id="pabdg">0</span></div>
+            <div id="palist"><div class="empty"><div class="ei"><i class="fa-regular fa-circle-check"></i></div><div class="et">All clear</div><div class="es">Nothing waiting for your approval</div></div></div>
+          </div>
+          <div>
+            <div class="card">
+              <div class="chd"><span class="ct2">Quick Actions</span></div>
+              <div id="qabox"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ITEMS -->
+      <div class="page hidden" id="pg-items">
+        <div class="ph">
+          <div><div class="pt">Item Master</div><div class="ps">Consumables and assets across all categories</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openM('m-item')"><i class="fa-solid fa-plus"></i> Add Item</button></div>
+        </div>
+        <div class="card">
+          <div class="fbar">
+            <input class="fs" id="itemq" placeholder="Search items…" oninput="loadItems()">
+            <select class="fsel" id="itemcatf" onchange="loadItems()"><option value="">All Categories</option></select>
+            <select class="fsel" id="itemtypef" onchange="loadItems()"><option value="">All Types</option><option value="asset">Asset</option><option value="consumable">Consumable</option></select>
+            <select class="fsel" id="itemactf" onchange="loadItems()"><option value="true">Active</option><option value="">All</option><option value="false">Inactive</option></select>
+          </div>
+          <div class="tw2"><table><thead><tr><th>Code</th><th>Name</th><th>Category</th><th>UOM</th><th>Type</th><th>Last Rate</th><th>Status</th><th></th></tr></thead><tbody id="itemstb"><tr><td colspan="8" class="lc"><span class="spin"></span></td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- VENDORS -->
+      <div class="page hidden" id="pg-vendors">
+        <div class="ph">
+          <div><div class="pt">Vendor Master</div><div class="ps">Suppliers and service providers</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openM('m-vendor')"><i class="fa-solid fa-plus"></i> Add Vendor</button></div>
+        </div>
+        <div class="card">
+          <div class="fbar">
+            <input class="fs" id="vendorq" placeholder="Search vendors…" oninput="loadVendors()">
+            <select class="fsel" id="vendoractf" onchange="loadVendors()"><option value="true">Active</option><option value="">All</option><option value="false">Inactive</option></select>
+          </div>
+          <div class="tw2"><table><thead><tr><th>Code</th><th>Name</th><th>Contact</th><th>GSTIN</th><th>Status</th><th></th></tr></thead><tbody id="vendorstb"><tr><td colspan="6" class="lc"><span class="spin"></span></td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- CATEGORIES -->
+      <div class="page hidden" id="pg-categories">
+        <div class="ph">
+          <div><div class="pt">Categories</div><div class="ps">Item categories with depreciation config</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openM('m-cat')"><i class="fa-solid fa-plus"></i> Add Category</button></div>
+        </div>
+        <div class="card"><div class="tw2"><table><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Method</th><th>Rate %</th><th>Life</th><th>Status</th><th></th></tr></thead><tbody id="catstb"><tr><td colspan="8" class="lc"><span class="spin"></span></td></tr></tbody></table></div></div>
+      </div>
+
+      <!-- WAREHOUSES -->
+      <div class="page hidden" id="pg-warehouses">
+        <div class="ph">
+          <div><div class="pt">Warehouses</div><div class="ps">Storage locations and store rooms</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openM('m-wh')"><i class="fa-solid fa-plus"></i> Add Warehouse</button></div>
+        </div>
+        <div class="card"><div class="tw2"><table><thead><tr><th>Code</th><th>Name</th><th>Location</th><th>Type</th><th>Status</th><th></th></tr></thead><tbody id="whtb"><tr><td colspan="6" class="lc"><span class="spin"></span></td></tr></tbody></table></div></div>
+      </div>
+
+      <!-- DEPARTMENTS -->
+      <div class="page hidden" id="pg-departments">
+        <div class="ph">
+          <div><div class="pt">Departments</div><div class="ps">Departments and HOD assignments</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openM('m-dept')"><i class="fa-solid fa-plus"></i> Add Department</button></div>
+        </div>
+        <div class="card"><div class="tw2"><table><thead><tr><th>Code</th><th>Name</th><th>HOD</th><th>Cost Centre</th><th>Status</th><th></th></tr></thead><tbody id="depttb"><tr><td colspan="6" class="lc"><span class="spin"></span></td></tr></tbody></table></div></div>
+      </div>
+
+      <!-- PRs -->
+      <div class="page hidden" id="pg-prs">
+        <div class="ph">
+          <div><div class="pt">Purchase Requisitions</div><div class="ps">Indent requests from departments</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openPRModal()"><i class="fa-solid fa-plus"></i> New PR</button></div>
+        </div>
+        <div class="card">
+          <div class="fbar">
+            <select class="fsel" id="prsf" onchange="loadPRs()"><option value="">All Status</option><option value="draft">Draft</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+            <select class="fsel" id="prpf" onchange="loadPRs()"><option value="">All Priority</option><option value="urgent">Urgent</option><option value="normal">Normal</option><option value="low">Low</option></select>
+          </div>
+          <div class="tw2"><table><thead><tr><th>PR Number</th><th>Department</th><th>Priority</th><th>Items</th><th>Required By</th><th>Status</th><th>Raised</th><th></th></tr></thead><tbody id="prstb"><tr><td colspan="8" class="lc"><span class="spin"></span></td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- POs -->
+      <div class="page hidden" id="pg-pos">
+        <div class="ph">
+          <div><div class="pt">Purchase Orders</div><div class="ps">Orders placed with vendors</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openPOModal()"><i class="fa-solid fa-plus"></i> Create PO</button></div>
+        </div>
+        <div class="card">
+          <div class="fbar">
+            <select class="fsel" id="posf" onchange="loadPOs()"><option value="">All Status</option><option value="draft">Draft</option><option value="confirmed">Confirmed</option><option value="sent">Sent</option><option value="partial">Partial</option><option value="closed">Closed</option></select>
+          </div>
+          <div class="tw2"><table><thead><tr><th>PO Number</th><th>Vendor</th><th>Items</th><th>Value</th><th>Delivery</th><th>Status</th><th>Approval</th><th></th></tr></thead><tbody id="postb"><tr><td colspan="8" class="lc"><span class="spin"></span></td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- GRNs -->
+      <div class="page hidden" id="pg-grns">
+        <div class="ph">
+          <div><div class="pt">Goods Receipt Notes</div><div class="ps">Inward goods received against purchase orders</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openGRNModal()"><i class="fa-solid fa-plus"></i> New GRN</button></div>
+        </div>
+        <div class="card">
+          <div class="fbar">
+            <select class="fsel" id="grnsf" onchange="loadGRNs()"><option value="">All Status</option><option value="draft">Draft</option><option value="posted">Posted</option></select>
+          </div>
+          <div class="tw2"><table><thead><tr><th>GRN Number</th><th>PO Ref</th><th>Vendor</th><th>Invoice No.</th><th>Value</th><th>Status</th><th>Posted At</th><th></th></tr></thead><tbody id="grnstb"><tr><td colspan="8" class="lc"><span class="spin"></span></td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- USERS -->
+      <div class="page hidden" id="pg-users">
+        <div class="ph">
+          <div><div class="pt">Users</div><div class="ps">User accounts for this institution</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openM('m-user')"><i class="fa-solid fa-plus"></i> Add User</button></div>
+        </div>
+        <div class="card"><div class="tw2"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody id="userstb"><tr><td colspan="5" class="lc"><span class="spin"></span></td></tr></tbody></table></div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="ov" id="m-newinst">
+  <div class="modal mlg">
+    <div class="mhd"><span class="mtitle">Create New Institution</span><button class="mx" onclick="closeM('m-newinst')">×</button></div>
+    <div class="mbody">
+      <div class="sec">Institution Details</div>
+      <div class="r2">
+        <div class="fg"><label class="fl">Name *</label><input class="inp" id="cin" placeholder="St. Mark's Sr. Sec. School"></div>
+        <div class="fg"><label class="fl">Short Name</label><input class="inp" id="cisn" placeholder="SMSS" maxlength="20"></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label class="fl">Type *</label><select class="inp sel" id="cit"><option value="school">School</option><option value="college">College</option><option value="university">University</option></select></div>
+        <div class="fg"><label class="fl">Tier</label><select class="inp sel" id="citier"><option value="standard">Standard</option><option value="basic">Basic</option></select></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label class="fl">Contact Email</label><input class="inp" type="email" id="cie" placeholder="admin@school.edu.in"></div>
+        <div class="fg"><label class="fl">Contact Phone</label><input class="inp" id="cip" placeholder="+91 98765 43210"></div>
+      </div>
+      <div class="sec">First Administrator</div>
+      <div class="r2">
+        <div class="fg"><label class="fl">Admin Name *</label><input class="inp" id="cian" placeholder="Full name"></div>
+        <div class="fg"><label class="fl">Admin Email *</label><input class="inp" type="email" id="ciae"></div>
+      </div>
+      <div class="fg"><label class="fl">Temporary Password *</label><input class="inp" id="ciap" placeholder="Min 8 characters"><div class="fh">Admin must change this on first login</div></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-newinst')">Cancel</button>
+      <button class="btn btn-primary" onclick="createInst()"><i class="fa-solid fa-building-circle-check"></i> Create Institution</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="m-item">
+  <div class="modal mlg">
+    <div class="mhd"><span class="mtitle" id="itemmt">Add Item</span><button class="mx" onclick="closeM('m-item')">×</button></div>
+    <div class="mbody">
+      <input type="hidden" id="itemeid">
+      <div class="r2">
+        <div class="fg"><label class="fl">Item Name *</label><input class="inp" id="itemname" placeholder="e.g. Office Chair"></div>
+        <div class="fg"><label class="fl">Code <span style="font-weight:400;color:var(--muted)">(auto if blank)</span></label><input class="inp" id="itemcode" placeholder="e.g. FURN-0001"></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label class="fl">Category *</label><select class="inp sel" id="itemcat"><option value="">Select…</option></select></div>
+        <div class="fg"><label class="fl">Unit of Measure *</label><select class="inp sel" id="itemuom"><option value="">Select…</option></select></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label class="fl">HSN Code</label><input class="inp" id="itemhsn" placeholder="e.g. 9401"></div>
+        <div class="fg"><label class="fl">Description</label><input class="inp" id="itemdesc" placeholder="Brief description"></div>
+      </div>
+      <div class="r3">
+        <div class="fg"><label class="fl">Reorder Qty</label><input class="inp" type="number" id="itemreorder" placeholder="0" min="0"></div>
+        <div class="fg"><label class="fl">Min Stock</label><input class="inp" type="number" id="itemmin" placeholder="0" min="0"></div>
+        <div class="fg"><label class="fl">Max Stock</label><input class="inp" type="number" id="itemmax" placeholder="Optional"></div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-item')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveItem()"><i class="fa-solid fa-floppy-disk"></i> Save Item</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="m-vendor">
+  <div class="modal mlg">
+    <div class="mhd"><span class="mtitle" id="vendormt">Add Vendor</span><button class="mx" onclick="closeM('m-vendor')">×</button></div>
+    <div class="mbody">
+      <input type="hidden" id="vendoreid">
+      <div class="r2">
+        <div class="fg"><label class="fl">Vendor Name *</label><input class="inp" id="vn" placeholder="ABC Traders"></div>
+        <div class="fg"><label class="fl">Code <span style="font-weight:400;color:var(--muted)">(auto if blank)</span></label><input class="inp" id="vc"></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label class="fl">Contact Person</label><input class="inp" id="vcp"></div>
+        <div class="fg"><label class="fl">Phone</label><input class="inp" id="vph" placeholder="+91"></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label class="fl">Email</label><input class="inp" type="email" id="vem"></div>
+        <div class="fg"><label class="fl">GSTIN</label><input class="inp" id="vg" placeholder="22AAAAA0000A1Z5" maxlength="15"></div>
+      </div>
+      <div class="fg"><label class="fl">Address</label><textarea class="txa" id="vad" rows="2" placeholder="Street, City, State, PIN"></textarea></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-vendor')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveVendor()"><i class="fa-solid fa-floppy-disk"></i> Save Vendor</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="m-cat">
+  <div class="modal msm">
+    <div class="mhd"><span class="mtitle">Add Category</span><button class="mx" onclick="closeM('m-cat')">×</button></div>
+    <div class="mbody">
+      <div class="r2">
+        <div class="fg"><label class="fl">Code *</label><input class="inp" id="catcode" placeholder="FURN"></div>
+        <div class="fg"><label class="fl">Name *</label><input class="inp" id="catname" placeholder="Furniture"></div>
+      </div>
+      <div class="fg"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" id="catisasset" onchange="$('depblock').style.display=this.checked?'block':'none'"><span>Asset Category</span></label></div>
+      <div id="depblock" style="display:none">
+        <div class="r2">
+          <div class="fg"><label class="fl">Method</label><select class="inp sel" id="catmeth"><option value="slm">SLM – Straight Line</option><option value="wdv">WDV – Written Down</option></select></div>
+          <div class="fg"><label class="fl">Rate % / Year</label><input class="inp" type="number" id="catrate" placeholder="10" min="0" max="100"></div>
+        </div>
+        <div class="fg"><label class="fl">Useful Life (years)</label><input class="inp" type="number" id="catlife" placeholder="10"></div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-cat')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCat()">Save Category</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="m-wh">
+  <div class="modal msm">
+    <div class="mhd"><span class="mtitle">Add Warehouse</span><button class="mx" onclick="closeM('m-wh')">×</button></div>
+    <div class="mbody">
+      <div class="r2">
+        <div class="fg"><label class="fl">Code *</label><input class="inp" id="whcode" placeholder="MAIN"></div>
+        <div class="fg"><label class="fl">Name *</label><input class="inp" id="whname" placeholder="Main Store"></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label class="fl">Type</label><select class="inp sel" id="whtype"><option value="main">Main</option><option value="sub">Sub</option><option value="transit">Transit</option></select></div>
+        <div class="fg"><label class="fl">Location</label><input class="inp" id="whloc" placeholder="Building / Block"></div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-wh')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveWH()">Save Warehouse</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="m-dept">
+  <div class="modal msm">
+    <div class="mhd"><span class="mtitle">Add Department</span><button class="mx" onclick="closeM('m-dept')">×</button></div>
+    <div class="mbody">
+      <div class="r2">
+        <div class="fg"><label class="fl">Code *</label><input class="inp" id="deptcode" placeholder="CS"></div>
+        <div class="fg"><label class="fl">Name *</label><input class="inp" id="deptname" placeholder="Computer Science"></div>
+      </div>
+      <div class="fg"><label class="fl">Cost Centre</label><input class="inp" id="deptcc" placeholder="Optional GL code"></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-dept')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDept()">Save Department</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="m-pr">
+  <div class="modal mxl">
+    <div class="mhd"><span class="mtitle">New Purchase Requisition</span><button class="mx" onclick="closeM('m-pr')">×</button></div>
+    <div class="mbody">
+      <div class="r2">
+        <div class="fg"><label class="fl">Department *</label><select class="inp sel" id="prdept"><option value="">Select…</option></select></div>
+        <div class="fg"><label class="fl">Warehouse *</label><select class="inp sel" id="prwh"><option value="">Select…</option></select></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label class="fl">Priority</label><select class="inp sel" id="prpri"><option value="normal">Normal</option><option value="urgent">Urgent</option><option value="low">Low</option></select></div>
+        <div class="fg"><label class="fl">Required By</label><input class="inp" type="date" id="prdate"></div>
+      </div>
+      <div class="fg"><label class="fl">Purpose</label><textarea class="txa" id="prpurp" rows="2" placeholder="Why are these items needed?"></textarea></div>
+      <div class="sec">Line Items</div>
+      <table class="ltbl"><thead><tr><th style="min-width:200px">Item *</th><th style="min-width:80px">UOM</th><th style="width:90px">Qty *</th><th style="width:100px">Est. Rate</th><th>Purpose</th><th style="width:28px"></th></tr></thead><tbody id="prlines"></tbody></table>
+      <button class="addl" onclick="addPRLine()"><i class="fa-solid fa-plus"></i> Add Item</button>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-pr')">Cancel</button>
+      <button class="btn btn-secondary" onclick="savePR(false)">Save Draft</button>
+      <button class="btn btn-primary" onclick="savePR(true)"><i class="fa-solid fa-paper-plane"></i> Submit for Approval</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="m-po">
+  <div class="modal mxl">
+    <div class="mhd"><span class="mtitle">Create Purchase Order</span><button class="mx" onclick="closeM('m-po')">×</button></div>
+    <div class="mbody">
+      <div class="r2">
+        <div class="fg"><label class="fl">Vendor *</label><select class="inp sel" id="povendor"><option value="">Select…</option></select></div>
+        <div class="fg"><label class="fl">Warehouse *</label><select class="inp sel" id="powh"><option value="">Select…</option></select></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label class="fl">Delivery Date</label><input class="inp" type="date" id="podeldate"></div>
+        <div class="fg"><label class="fl">Payment Terms</label><input class="inp" id="poterms" placeholder="e.g. Net 30 days"></div>
+      </div>
+      <div class="sec">Line Items</div>
+      <table class="ltbl"><thead><tr><th style="min-width:200px">Item *</th><th style="min-width:80px">UOM</th><th style="width:80px">Qty *</th><th style="width:100px">Rate ₹ *</th><th style="width:70px">GST %</th><th style="width:100px;text-align:right">Amount</th><th style="width:28px"></th></tr></thead><tbody id="polines"></tbody></table>
+      <button class="addl" onclick="addPOLine()"><i class="fa-solid fa-plus"></i> Add Item</button>
+      <div style="display:flex;justify-content:flex-end;margin-top:14px">
+        <div style="text-align:right;font-size:13px">
+          <div style="color:var(--muted);padding:2px 0">Sub Total: <span class="mono" id="posub">₹0.00</span></div>
+          <div style="color:var(--muted);padding:2px 0">Tax: <span class="mono" id="potax">₹0.00</span></div>
+          <div style="font-size:15px;font-weight:700;margin-top:6px;border-top:1.5px solid var(--border);padding-top:6px">Grand Total: <span class="mono" id="pogrand">₹0.00</span></div>
+        </div>
+      </div>
+      <div class="fg" style="margin-top:14px"><label class="fl">Remarks</label><textarea class="txa" id="porem" rows="2"></textarea></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-po')">Cancel</button>
+      <button class="btn btn-secondary" onclick="savePO(false)">Save Draft</button>
+      <button class="btn btn-primary" onclick="savePO(true)"><i class="fa-solid fa-paper-plane"></i> Submit for Approval</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="m-grn">
+  <div class="modal mxl">
+    <div class="mhd"><span class="mtitle">Record Goods Receipt</span><button class="mx" onclick="closeM('m-grn')">×</button></div>
+    <div class="mbody">
+      <div class="fg"><label class="fl">Purchase Order *</label><select class="inp sel" id="grnpo" onchange="loadPOForGRN()"><option value="">Select PO…</option></select></div>
+      <div class="r2">
+        <div class="fg"><label class="fl">Vendor Invoice No.</label><input class="inp" id="grnino"></div>
+        <div class="fg"><label class="fl">Invoice Date</label><input class="inp" type="date" id="grnidate"></div>
+      </div>
+      <div class="r2">
+        <div class="fg"><label class="fl">Vehicle No.</label><input class="inp" id="grnveh"></div>
+        <div class="fg"><label class="fl">Delivery Challan No.</label><input class="inp" id="grndc"></div>
+      </div>
+      <div class="sec">Items Received</div>
+      <table class="ltbl"><thead><tr><th>Item</th><th>Ordered</th><th>Received *</th><th>Accepted *</th><th>Rate ₹</th><th>QC Remarks</th></tr></thead><tbody id="grnlines"><tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Select a PO above to load items</td></tr></tbody></table>
+      <div class="fg" style="margin-top:14px"><label class="fl">Remarks</label><textarea class="txa" id="grnrem" rows="2"></textarea></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-grn')">Cancel</button>
+      <button class="btn btn-secondary" onclick="saveGRN(false)">Save Draft</button>
+      <button class="btn btn-success" onclick="saveGRN(true)"><i class="fa-solid fa-check-double"></i> Post to Stock</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="m-action">
+  <div class="modal msm">
+    <div class="mhd"><span class="mtitle" id="actt">Confirm</span><button class="mx" onclick="closeM('m-action')">×</button></div>
+    <div class="mbody">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px" id="actd"></p>
+      <div class="fg"><label class="fl" id="actl">Remarks</label><textarea class="txa" id="actr" rows="3"></textarea></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-action')">Cancel</button>
+      <button class="btn btn-primary" id="actbtn" onclick="confirmAct()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="m-user">
+  <div class="modal msm">
+    <div class="mhd"><span class="mtitle">Add User</span><button class="mx" onclick="closeM('m-user')">×</button></div>
+    <div class="mbody">
+      <div class="fg"><label class="fl">Full Name *</label><input class="inp" id="uname"></div>
+      <div class="fg"><label class="fl">Email *</label><input class="inp" type="email" id="uemail"></div>
+      <div class="fg"><label class="fl">Role *</label>
+        <select class="inp sel" id="urole">
+          <option value="inst_admin">Institution Admin</option>
+          <option value="purchase_officer">Purchase Officer</option>
+          <option value="store_manager">Store Manager</option>
+          <option value="hod">HOD</option>
+          <option value="dept_staff">Department Staff</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Temporary Password *</label><input class="inp" id="upass" placeholder="Min 8 characters"><div class="fh">User must change on first login</div></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-user')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<div class="tw" id="toasts"></div>
+<script>
+const BASE='https://od-inventory-module.onrender.com/api/v1';
+let tok=localStorage.getItem('od_tok')||'';
+let me=JSON.parse(localStorage.getItem('od_me')||'null');
+let tid=localStorage.getItem('od_tid')||'';
+let pendingAct=null;
+let _cats=[],_uoms=[],_whs=[],_depts=[],_vendors=[],_items=[],_instances=[];
+
+const api=async(m,p,b)=>{
+  const h={'Content-Type':'application/json',Authorization:`Bearer ${tok}`};
+  const r=await fetch(BASE+p,{method:m,headers:h,body:b?JSON.stringify(b):undefined});
+  const d=await r.json();
+  if(!r.ok) throw new Error(d.message||'Request failed');
+  return d;
+};
+
+const $=id=>document.getElementById(id);
+const gv=id=>($( id)?.value||'').trim();
+const sv=(id,v)=>{const e=$(id);if(e)e.value=v??''};
+const selV=id=>$(id)?.value||'';
+const openM=id=>$(id)?.classList.add('show');
+const closeM=id=>$(id)?.classList.remove('show');
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show')}));
+
+const toast=(msg,type='ok')=>{
+  const icons={ok:'circle-check',err:'circle-xmark',warn:'triangle-exclamation'};
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;
+  el.innerHTML=`<i class="fa-solid fa-${icons[type]}"></i><span>${msg}</span>`;
+  $('toasts').appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .2s';setTimeout(()=>el.remove(),220)},3400);
+};
+
+const fmtD=d=>d?new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—';
+const fmtDT=d=>d?new Date(d).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+const inr=v=>v!=null?'₹'+Number(v).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+const bdg=(s,label)=>`<span class="bdg b-${s}">${label||s.replace(/_/g,' ')}</span>`;
+const initials=n=>(n||'U').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const avColors=['#2563EB','#0EA5E9','#10B981','#8B5CF6','#F59E0B','#EF4444','#F97316'];
+const avc=i=>avColors[i%7];
+const roleLabel=r=>({super_admin:'Super Admin',inst_admin:'Inst. Admin',purchase_officer:'Purchase Officer',store_manager:'Store Manager',hod:'HOD',dept_staff:'Dept. Staff'}[r]||r);
+
+// ── AUTH ──────────────────────────────────────────────
+async function doLogin(){
+  const email=gv('lemail'),pass=$('lpass').value,tenant=gv('ltenant');
+  const errEl=$('lerr');errEl.classList.remove('show');
+  if(!email||!pass){$('lerrmsg').textContent='Email and password required.';errEl.classList.add('show');return;}
+  $('lbtxt').classList.add('hidden');$('lbspin').classList.remove('hidden');$('lbtn').disabled=true;
+  try{
+    const body={email,password:pass};if(tenant)body.tenantId=tenant;
+    const d=await fetch(BASE+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+    if(!d.success)throw new Error(d.message);
+    tok=d.accessToken;me=d.user;tid=d.user.tenantId||'';
+    localStorage.setItem('od_tok',tok);localStorage.setItem('od_me',JSON.stringify(me));localStorage.setItem('od_tid',tid);
+    initApp();
+  }catch(e){$('lerrmsg').textContent=e.message||'Login failed.';errEl.classList.add('show');}
+  finally{$('lbtxt').classList.remove('hidden');$('lbspin').classList.add('hidden');$('lbtn').disabled=false;}
+}
+$('lpass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+function logout(){
+  localStorage.clear();tok='';me=null;tid='';
+  $('av').style.display='none';$('lv').style.display='flex';
+  sv('lemail','');sv('lpass','');
+}
+
+// ── INIT ──────────────────────────────────────────────
+function initApp(){
+  $('lv').style.display='none';$('av').style.display='flex';
+  const name=me.name||'User';
+  $('sbav').textContent=initials(name);$('sbav').style.background=avc(name.length);
+  $('sbun').textContent=name;$('sbue').textContent=me.email||'';
+  const isSA=me.role==='super_admin';
+  $('wsname').textContent=isSA?'Okie Dokie Solutions':(me.instance?.name||tid||'Institution');
+  $('wsrole').textContent=roleLabel(me.role);
+  buildNav(me.role);
+  navTo(isSA?'pg-instances':'pg-dashboard');
+}
+
+function buildNav(role){
+  const isSA=role==='super_admin';
+  const isAdmin=['super_admin','inst_admin'].includes(role);
+  const canWrite=['inst_admin','purchase_officer','store_manager'].includes(role);
+  let h='';
+  if(isSA){
+    h+=nav('pg-instances','fa-building','Institutions');
+  }else{
+    h+=grp('Overview')+nav('pg-dashboard','fa-chart-pie','Dashboard');
+    h+=grp('Purchase')+nav('pg-prs','fa-file-circle-plus','Requisitions')+nav('pg-pos','fa-cart-shopping','Purchase Orders')+nav('pg-grns','fa-truck-ramp-box','GRN');
+    if(canWrite) h+=grp('Masters')+nav('pg-items','fa-cubes','Items')+nav('pg-vendors','fa-handshake','Vendors')+nav('pg-categories','fa-tags','Categories')+nav('pg-warehouses','fa-warehouse','Warehouses')+nav('pg-departments','fa-sitemap','Departments');
+    if(isAdmin) h+=grp('Admin')+nav('pg-users','fa-users','Users');
+  }
+  $('sidenav').innerHTML=h;
+}
+const grp=l=>`<div class="sbgl">${l}</div>`;
+const nav=(pg,icon,label)=>`<div class="sbi" id="n-${pg}" onclick="navTo('${pg}')"><span class="sic"><i class="fa-solid ${icon}"></i></span>${label}</div>`;
+
+const pgTitles={
+  'pg-instances':['Institutions','Manage all institution instances'],
+  'pg-dashboard':['Dashboard','Inventory overview'],
+  'pg-items':['Item Master','Consumables and assets'],
+  'pg-vendors':['Vendors','Suppliers and service providers'],
+  'pg-categories':['Categories','With depreciation config'],
+  'pg-warehouses':['Warehouses','Storage locations'],
+  'pg-departments':['Departments','And HOD assignments'],
+  'pg-prs':['Purchase Requisitions','Indent requests'],
+  'pg-pos':['Purchase Orders','Orders with vendors'],
+  'pg-grns':['GRN','Goods receipt notes'],
+  'pg-users':['Users','Institution accounts'],
+};
+
+const pgLoaders={
+  'pg-instances':loadInstances,'pg-dashboard':loadDash,
+  'pg-items':()=>{prefetch();loadItems();},'pg-vendors':loadVendors,
+  'pg-categories':loadCats,'pg-warehouses':loadWHs,'pg-departments':loadDepts,
+  'pg-prs':loadPRs,'pg-pos':loadPOs,'pg-grns':loadGRNs,'pg-users':loadUsers,
+};
+
+function navTo(pg){
+  document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
+  document.querySelectorAll('.sbi').forEach(i=>i.classList.remove('on'));
+  $(pg)?.classList.remove('hidden');
+  $('n-'+pg)?.classList.add('on');
+  const t=pgTitles[pg]||['—',''];
+  $('tbt').textContent=t[0];
+  if(pgLoaders[pg])pgLoaders[pg]();
+}
+
+function reloadPg(){
+  const a=document.querySelector('.page:not(.hidden)');
+  if(a&&pgLoaders[a.id])pgLoaders[a.id]();
+}
+
+// ── INSTANCES ─────────────────────────────────────────
+async function loadInstances(){
+  $('instgrid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px"><span class="spin"></span></div>';
+  try{const d=await api('GET','/superadmin/instances?limit=100');_instances=d.data||[];renderInst();}
+  catch(e){toast(e.message,'err');}
+}
+
+function renderInst(){
+  const q=(document.querySelector('#pg-instances .fs')?.value||'').toLowerCase();
+  const type=selV('itypef'),active=selV('iactf');
+  let list=_instances.filter(i=>{
+    if(q&&!i.name.toLowerCase().includes(q)&&!i.tenantId.includes(q))return false;
+    if(type&&i.type!==type)return false;
+    if(active!==''&&String(i.isActive)!==active)return false;
+    return true;
+  });
+  $('ict').textContent=`${list.length} institution${list.length!==1?'s':''}`;
+  if(!list.length){
+    $('instgrid').innerHTML=`<div style="grid-column:1/-1"><div class="empty"><div class="ei"><i class="fa-regular fa-building"></i></div><div class="et">No institutions found</div><div class="es">Create your first institution to get started</div><button class="btn btn-primary" onclick="openM('m-newinst')">New Institution</button></div></div>`;
+    return;
+  }
+  $('instgrid').innerHTML=list.map((inst,i)=>`
+    <div class="ic ${inst.isActive?'':'off'}">
+      <div class="ict"><div class="icav" style="background:${avc(i)}">${initials(inst.name)}</div><span class="bdg b-${inst.type}">${inst.type}</span></div>
+      <div class="icn">${inst.name}</div><div class="icid">${inst.tenantId}</div>
+      <div class="ics">
+        <div><div class="icsv">${inst.stats?.totalUsers||0}</div><div class="icsl">Users</div></div>
+        <div><div class="icsv" style="text-transform:capitalize">${inst.tier}</div><div class="icsl">Tier</div></div>
+      </div>
+      <div class="icf">
+        <span class="bdg ${inst.isActive?'b-active':'b-inactive'}">${inst.isActive?'Active':'Inactive'}</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-secondary" onclick="addUserModal('${inst.tenantId}')" title="Add user"><i class="fa-solid fa-user-plus"></i></button>
+          <button class="btn btn-sm ${inst.isActive?'btn-secondary':'btn-success'}" onclick="toggleInst('${inst.tenantId}',${inst.isActive})">${inst.isActive?'Deactivate':'Activate'}</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function createInst(){
+  const name=gv('cin'),type=selV('cit'),an=gv('cian'),ae=gv('ciae'),ap=gv('ciap');
+  if(!name||!type||!an||!ae||!ap){toast('Fill all required (*) fields','err');return;}
+  try{
+    const d=await api('POST','/superadmin/instances',{name,type,tier:selV('citier'),shortName:gv('cisn'),contactEmail:gv('cie'),contactPhone:gv('cip'),adminName:an,adminEmail:ae,adminPassword:ap});
+    closeM('m-newinst');
+    toast(`"${name}" created — ID: ${d.data.instance.tenantId}`);
+    ['cin','cisn','cie','cip','cian','ciae','ciap'].forEach(id=>sv(id,''));
+    loadInstances();
+  }catch(e){toast(e.message,'err');}
+}
+
+async function toggleInst(tenantId,isActive){
+  if(!confirm(`${isActive?'Deactivate':'Activate'} this institution?`))return;
+  try{await api('PATCH',`/superadmin/instances/${tenantId}/toggle-active`);toast(`Institution ${isActive?'deactivated':'activated'}`);loadInstances();}
+  catch(e){toast(e.message,'err');}
+}
+
+function addUserModal(tenantId){$('m-user').dataset.itid=tenantId;openM('m-user');}
+
+// ── DASHBOARD ─────────────────────────────────────────
+async function loadDash(){
+  const h=new Date().getHours();
+  $('dashgreet').textContent=`${h<12?'Good morning':h<17?'Good afternoon':'Good evening'}, ${(me.name||'').split(' ')[0]}`;
+  $('dashmeta').textContent=`${me.instance?.name||''} · ${roleLabel(me.role)}`;
+  try{
+    const [prs,pos,grns]=await Promise.allSettled([api('GET','/purchase/prs?limit=20'),api('GET','/purchase/pos?limit=20'),api('GET','/purchase/grns?limit=20')]);
+    const prD=prs.value?.data||[],poD=pos.value?.data||[],grnD=grns.value?.data||[];
+    const prT=prs.value?.pagination?.total||0,poT=pos.value?.pagination?.total||0;
+    const grnP=grnD.filter(g=>g.status==='posted').length;
+    const openPO=poD.filter(p=>['confirmed','sent'].includes(p.status)).length;
+    $('krow').innerHTML=`
+      <div class="kpi kbl"><div class="kl">Purchase Requests</div><div class="kv">${prT}</div><div class="km">${prD.filter(p=>p.status==='pending').length} pending approval</div><i class="fa-solid fa-file-invoice ki"></i></div>
+      <div class="kpi kor"><div class="kl">Purchase Orders</div><div class="kv">${poT}</div><div class="km">${poD.filter(p=>p.status==='partial').length} partially received</div><i class="fa-solid fa-cart-shopping ki"></i></div>
+      <div class="kpi kgr"><div class="kl">GRNs Posted</div><div class="kv">${grnP}</div><div class="km">Stock updated</div><i class="fa-solid fa-truck-ramp-box ki"></i></div>
+      <div class="kpi kpu"><div class="kl">Open POs</div><div class="kv">${openPO}</div><div class="km">Awaiting delivery</div><i class="fa-solid fa-clock ki"></i></div>
+    `;
+    const pending=[...prD.filter(p=>p.status==='pending').map(p=>({...p,_dt:'pr'})),...poD.filter(p=>p.approvalStatus==='pending').map(p=>({...p,_dt:'po'}))];
+    $('pabdg').textContent=pending.length;
+    $('palist').innerHTML=pending.length?pending.map(doc=>{
+      const isPR=doc._dt==='pr';
+      return `<div class="pai">
+        <div style="width:32px;height:32px;border-radius:7px;background:${isPR?'var(--brand-dim)':'#FEF3C7'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fa-solid ${isPR?'fa-file-circle-plus':'fa-cart-shopping'}" style="font-size:12px;color:${isPR?'var(--brand)':'var(--warning)'}"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="pad">${isPR?doc.prNumber:doc.poNumber}</div>
+          <div class="pam">${isPR?(doc.departmentId?.name||'—'):(doc.vendorId?.name||'—')} · ${fmtD(doc.createdAt)}</div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-sm btn-success" onclick="actOn('${doc._dt}','${doc._id}','approve')"><i class="fa-solid fa-check"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="actOn('${doc._dt}','${doc._id}','reject')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>`;
+    }).join(''):`<div class="empty"><div class="ei"><i class="fa-regular fa-circle-check"></i></div><div class="et">All clear</div><div class="es">Nothing waiting for your approval</div></div>`;
+    const role=me.role;
+    $('qabox').innerHTML=[
+      {pg:'pg-prs',fn:'openPRModal',icon:'fa-file-circle-plus',bg:'var(--brand-dim)',ic:'var(--brand)',t:'New Purchase Request',s:'Raise a PR for your department',show:true},
+      {pg:'pg-pos',fn:'openPOModal',icon:'fa-cart-plus',bg:'#D1FAE5',ic:'var(--success)',t:'Create Purchase Order',s:'Place order with a vendor',show:['inst_admin','purchase_officer'].includes(role)},
+      {pg:'pg-grns',fn:'openGRNModal',icon:'fa-truck-ramp-box',bg:'#FEF3C7',ic:'var(--warning)',t:'Record GRN',s:'Log goods received from vendor',show:['inst_admin','store_manager'].includes(role)},
+      {pg:'pg-items',fn:null,icon:'fa-cubes',bg:'#EDE9FE',ic:'var(--purple)',t:'Manage Items',s:'Add or update item master',show:['inst_admin','purchase_officer','store_manager'].includes(role)},
+    ].filter(a=>a.show).map(a=>`
+      <div class="qai" onclick="navTo('${a.pg}')${a.fn?`;setTimeout(${a.fn},200)`:''}" >
+        <div class="qaico" style="background:${a.bg}"><i class="fa-solid ${a.icon}" style="color:${a.ic}"></i></div>
+        <div style="flex:1"><div style="font-size:13px;font-weight:500">${a.t}</div><div style="font-size:11px;color:var(--muted)">${a.s}</div></div>
+        <i class="fa-solid fa-chevron-right" style="color:var(--muted-l);font-size:11px"></i>
+      </div>
+    `).join('');
+  }catch(e){console.error(e);}
+}
+
+function actOn(dt,id,action){
+  pendingAct={dt,id,action};
+  $('actt').textContent=action==='approve'?'Approve Request':'Reject Request';
+  $('actd').textContent=`Confirm ${action} of this ${dt.toUpperCase()}?`;
+  $('actl').textContent=action==='reject'?'Reason *':'Remarks (optional)';
+  $('actbtn').className=`btn ${action==='approve'?'btn-success':'btn-danger'}`;
+  $('actbtn').innerHTML=`<i class="fa-solid fa-${action==='approve'?'check':'xmark'}"></i> ${action==='approve'?'Approve':'Reject'}`;
+  sv('actr','');openM('m-action');
+}
+async function confirmAct(){
+  if(!pendingAct)return;
+  const {dt,id,action}=pendingAct;
+  const reason=gv('actr');
+  if(action==='reject'&&!reason){toast('Rejection reason required','err');return;}
+  try{
+    await api('POST',`/purchase/${dt==='pr'?'prs':'pos'}/${id}/${action}`,{reason,remarks:reason});
+    closeM('m-action');toast(`${dt.toUpperCase()} ${action}d`);sv('actr','');loadDash();pendingAct=null;
+  }catch(e){toast(e.message,'err');}
+}
+
+// ── MASTERS PREFETCH ──────────────────────────────────
+async function prefetch(){
+  try{
+    const [c,u,w,d,v]=await Promise.allSettled([
+      api('GET','/masters/categories?limit=200&isActive=true'),
+      api('GET','/masters/uoms?limit=100&isActive=true'),
+      api('GET','/masters/warehouses?limit=100'),
+      api('GET','/masters/departments?limit=100'),
+      api('GET','/masters/vendors?limit=200&isActive=true'),
+    ]);
+    _cats=c.value?.data||[];_uoms=u.value?.data||[];_whs=w.value?.data||[];_depts=d.value?.data||[];_vendors=v.value?.data||[];
+    fillSelects();
+  }catch(e){console.error(e);}
+}
+
+function fillSelects(){
+  const fs=(id,list,lbl='name')=>{const e=$(id);if(!e)return;const v=e.value;e.innerHTML=`<option value="">Select…</option>`+list.map(i=>`<option value="${i._id}">${i[lbl]}</option>`).join('');e.value=v;};
+  fs('itemcat',_cats);
+  const icf=$('itemcatf');if(icf)icf.innerHTML='<option value="">All Categories</option>'+_cats.map(c=>`<option value="${c._id}">${c.name}</option>`).join('');
+  fs('prdept',_depts);fs('prwh',_whs);fs('powh',_whs);
+  fs('povendor',_vendors);
+  const iu=$('itemuom');if(iu)iu.innerHTML='<option value="">Select…</option>'+_uoms.map(u=>`<option value="${u._id}">${u.name} (${u.code})</option>`).join('');
+}
+
+// ── ITEMS ─────────────────────────────────────────────
+async function loadItems(){
+  const tb=$('itemstb');if(!tb)return;
+  tb.innerHTML='<tr><td colspan="8" class="lc"><span class="spin"></span></td></tr>';
+  let url='/masters/items?limit=100';
+  const q=gv('itemq'),cf=selV('itemcatf'),tf=selV('itemtypef'),af=selV('itemactf');
+  if(q)url+=`&search=${encodeURIComponent(q)}`;if(cf)url+=`&categoryId=${cf}`;if(af!=='')url+=`&isActive=${af}`;
+  try{
+    const d=await api('GET',url);_items=d.data||[];
+    const list=tf?_items.filter(i=>tf==='asset'?i.isAsset:i.isConsumable):_items;
+    tb.innerHTML=list.length?list.map(i=>`<tr>
+      <td class="tdm">${i.itemCode}</td>
+      <td><strong>${i.name}</strong>${i.description?`<div class="tdd" style="font-size:11px">${i.description}</div>`:''}</td>
+      <td class="tdd">${i.categoryId?.name||'—'}</td><td class="tdd">${i.uomId?.code||'—'}</td>
+      <td>${i.isAsset?bdg('sent','Asset'):bdg('draft','Consumable')}</td>
+      <td class="tdm tdd">${i.lastPurchaseRate!=null?inr(i.lastPurchaseRate):'—'}</td>
+      <td>${bdg(i.isActive?'active':'inactive')}</td>
+      <td class="tda">
+        <button class="btn btn-sm btn-secondary btn-icon" onclick="editItem('${i._id}')"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-sm btn-ghost btn-icon" onclick="toggleM('/masters/items/${i._id}/toggle-active','${i.name}',loadItems)"><i class="fa-solid fa-power-off"></i></button>
+      </td>
+    </tr>`).join(''):`<tr><td colspan="8"><div class="empty"><div class="ei"><i class="fa-solid fa-cubes"></i></div><div class="et">No items found</div><div class="es">Add items to your inventory</div><button class="btn btn-primary" onclick="openM('m-item')">Add Item</button></div></td></tr>`;
+  }catch(e){toast(e.message,'err');}
+}
+
+async function editItem(id){
+  try{
+    const d=await api('GET',`/masters/items/${id}`);const item=d.data;
+    await prefetch();
+    sv('itemeid',id);$('itemmt').textContent='Edit Item';
+    sv('itemname',item.name);sv('itemcode',item.itemCode);sv('itemhsn',item.hsnCode||'');sv('itemdesc',item.description||'');
+    sv('itemreorder',item.reorderQty||0);sv('itemmin',item.minStock||0);sv('itemmax',item.maxStock||'');
+    sv('itemcat',item.categoryId?._id||item.categoryId||'');sv('itemuom',item.uomId?._id||item.uomId||'');
+    openM('m-item');
+  }catch(e){toast(e.message,'err');}
+}
+
+async function saveItem(){
+  const id=gv('itemeid');
+  const body={name:gv('itemname'),itemCode:gv('itemcode')||undefined,categoryId:selV('itemcat'),uomId:selV('itemuom'),hsnCode:gv('itemhsn')||undefined,description:gv('itemdesc')||undefined,reorderQty:Number($('itemreorder').value)||0,minStock:Number($('itemmin').value)||0,maxStock:$('itemmax').value?Number($('itemmax').value):undefined};
+  if(!body.name||!body.categoryId||!body.uomId){toast('Name, Category, UOM required','err');return;}
+  try{
+    if(id){await api('PATCH',`/masters/items/${id}`,body);toast('Item updated');}
+    else{await api('POST','/masters/items',body);toast('Item created');}
+    closeM('m-item');sv('itemeid','');$('itemmt').textContent='Add Item';loadItems();
+  }catch(e){toast(e.message,'err');}
+}
+
+// ── VENDORS ───────────────────────────────────────────
+async function loadVendors(){
+  const tb=$('vendorstb');if(!tb)return;
+  tb.innerHTML='<tr><td colspan="6" class="lc"><span class="spin"></span></td></tr>';
+  let url='/masters/vendors?limit=100';
+  const q=gv('vendorq'),af=selV('vendoractf');
+  if(q)url+=`&search=${encodeURIComponent(q)}`;if(af!=='')url+=`&isActive=${af}`;
+  try{
+    const d=await api('GET',url);_vendors=d.data||[];
+    const pv=$('povendor');if(pv)pv.innerHTML='<option value="">Select…</option>'+_vendors.map(v=>`<option value="${v._id}">${v.name}</option>`).join('');
+    tb.innerHTML=_vendors.length?_vendors.map(v=>`<tr>
+      <td class="tdm">${v.code}</td>
+      <td><strong>${v.name}</strong>${v.contactPerson?`<div class="tdd" style="font-size:11px">${v.contactPerson}</div>`:''}</td>
+      <td class="tdd">${v.phone||v.email||'—'}</td><td class="tdm tdd">${v.gstin||'—'}</td>
+      <td>${v.isBlacklisted?bdg('rejected','Blacklisted'):bdg(v.isActive?'active':'inactive')}</td>
+      <td class="tda">
+        <button class="btn btn-sm btn-secondary btn-icon" onclick="editVendor('${v._id}')"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-sm btn-ghost btn-icon" onclick="blacklistV('${v._id}','${v.name}',${v.isBlacklisted})" title="${v.isBlacklisted?'Un-blacklist':'Blacklist'}"><i class="fa-solid fa-ban"></i></button>
+      </td>
+    </tr>`).join(''):`<tr><td colspan="6"><div class="empty"><div class="ei"><i class="fa-solid fa-handshake"></i></div><div class="et">No vendors</div><button class="btn btn-primary" onclick="openM('m-vendor')">Add Vendor</button></div></td></tr>`;
+  }catch(e){toast(e.message,'err');}
+}
+
+async function editVendor(id){
+  try{
+    const d=await api('GET',`/masters/vendors/${id}`);const v=d.data;
+    sv('vendoreid',id);$('vendormt').textContent='Edit Vendor';
+    sv('vn',v.name);sv('vc',v.code);sv('vcp',v.contactPerson||'');sv('vph',v.phone||'');sv('vem',v.email||'');sv('vg',v.gstin||'');sv('vad',v.address?.line1||'');
+    openM('m-vendor');
+  }catch(e){toast(e.message,'err');}
+}
+
+async function saveVendor(){
+  const id=gv('vendoreid'),name=gv('vn');
+  if(!name){toast('Vendor name required','err');return;}
+  const body={name,code:gv('vc')||undefined,contactPerson:gv('vcp')||undefined,phone:gv('vph')||undefined,email:gv('vem')||undefined,gstin:gv('vg')||undefined,address:{line1:gv('vad')}};
+  try{
+    if(id){await api('PATCH',`/masters/vendors/${id}`,body);toast('Vendor updated');}
+    else{await api('POST','/masters/vendors',body);toast('Vendor created');}
+    closeM('m-vendor');sv('vendoreid','');$('vendormt').textContent='Add Vendor';loadVendors();
+  }catch(e){toast(e.message,'err');}
+}
+
+async function blacklistV(id,name,isBL){
+  const reason=isBL?null:prompt(`Reason for blacklisting "${name}":`);
+  if(!isBL&&!reason)return;
+  try{await api('PATCH',`/masters/vendors/${id}/blacklist`,{reason});toast(`Vendor ${isBL?'un-blacklisted':'blacklisted'}`);loadVendors();}
+  catch(e){toast(e.message,'err');}
+}
+
+// ── CATEGORIES ────────────────────────────────────────
+async function loadCats(){
+  const tb=$('catstb');if(!tb)return;
+  tb.innerHTML='<tr><td colspan="8" class="lc"><span class="spin"></span></td></tr>';
+  try{
+    const d=await api('GET','/masters/categories?limit=200');_cats=d.data||[];
+    tb.innerHTML=_cats.length?_cats.map(c=>`<tr>
+      <td class="tdm">${c.code}</td><td><strong>${c.name}</strong></td>
+      <td>${c.isAssetCategory?bdg('sent','Asset'):bdg('draft','Consumable')}</td>
+      <td class="tdd">${c.depreciationMethod?c.depreciationMethod.toUpperCase():'—'}</td>
+      <td class="tdd">${c.depreciationRate!=null?c.depreciationRate+'%':'—'}</td>
+      <td class="tdd">${c.usefulLifeYears?c.usefulLifeYears+' yrs':'—'}</td>
+      <td>${bdg(c.isActive?'active':'inactive')}</td>
+      <td class="tda"><button class="btn btn-sm btn-ghost" onclick="toggleM('/masters/categories/${c._id}/toggle-active','${c.name}',loadCats)">${c.isActive?'Deactivate':'Activate'}</button></td>
+    </tr>`).join(''):`<tr><td colspan="8"><div class="empty"><div class="ei"><i class="fa-solid fa-tags"></i></div><div class="et">No categories</div><button class="btn btn-primary" onclick="openM('m-cat')">Add Category</button></div></td></tr>`;
+  }catch(e){toast(e.message,'err');}
+}
+
+async function saveCat(){
+  const code=gv('catcode'),name=gv('catname');
+  if(!code||!name){toast('Code and name required','err');return;}
+  const isA=$('catisasset').checked;
+  const body={code,name,isAssetCategory:isA,depreciationMethod:isA?selV('catmeth'):undefined,depreciationRate:isA?Number($('catrate').value)||undefined:undefined,usefulLifeYears:isA?Number($('catlife').value)||undefined:undefined};
+  try{
+    await api('POST','/masters/categories',body);toast('Category created');closeM('m-cat');
+    sv('catcode','');sv('catname','');$('catisasset').checked=false;$('depblock').style.display='none';
+    loadCats();
+  }catch(e){toast(e.message,'err');}
+}
+
+// ── WAREHOUSES ────────────────────────────────────────
+async function loadWHs(){
+  const tb=$('whtb');if(!tb)return;
+  tb.innerHTML='<tr><td colspan="6" class="lc"><span class="spin"></span></td></tr>';
+  try{
+    const d=await api('GET','/masters/warehouses?limit=100');_whs=d.data||[];
+    tb.innerHTML=_whs.length?_whs.map(w=>`<tr>
+      <td class="tdm">${w.code}</td><td><strong>${w.name}</strong></td>
+      <td class="tdd">${w.location||'—'}</td><td>${bdg('draft',w.type)}</td>
+      <td>${bdg(w.isActive?'active':'inactive')}</td>
+      <td class="tda"><button class="btn btn-sm btn-ghost" onclick="toggleM('/masters/warehouses/${w._id}/toggle-active','${w.name}',loadWHs)">${w.isActive?'Deactivate':'Activate'}</button></td>
+    </tr>`).join(''):`<tr><td colspan="6"><div class="empty"><div class="ei"><i class="fa-solid fa-warehouse"></i></div><div class="et">No warehouses</div><button class="btn btn-primary" onclick="openM('m-wh')">Add Warehouse</button></div></td></tr>`;
+  }catch(e){toast(e.message,'err');}
+}
+
+async function saveWH(){
+  const code=gv('whcode'),name=gv('whname');
+  if(!code||!name){toast('Code and name required','err');return;}
+  try{await api('POST','/masters/warehouses',{code,name,type:selV('whtype'),location:gv('whloc')||undefined});toast('Warehouse created');closeM('m-wh');sv('whcode','');sv('whname','');sv('whloc','');loadWHs();}
+  catch(e){toast(e.message,'err');}
+}
+
+// ── DEPARTMENTS ───────────────────────────────────────
+async function loadDepts(){
+  const tb=$('depttb');if(!tb)return;
+  tb.innerHTML='<tr><td colspan="6" class="lc"><span class="spin"></span></td></tr>';
+  try{
+    const d=await api('GET','/masters/departments?limit=100');_depts=d.data||[];
+    tb.innerHTML=_depts.length?_depts.map(dept=>`<tr>
+      <td class="tdm">${dept.code}</td><td><strong>${dept.name}</strong></td>
+      <td class="tdd">${dept.hodUserId?.name||'—'}</td><td class="tdm tdd">${dept.costCentre||'—'}</td>
+      <td>${bdg(dept.isActive?'active':'inactive')}</td>
+      <td class="tda"><button class="btn btn-sm btn-ghost" onclick="toggleM('/masters/departments/${dept._id}/toggle-active','${dept.name}',loadDepts)">${dept.isActive?'Deactivate':'Activate'}</button></td>
+    </tr>`).join(''):`<tr><td colspan="6"><div class="empty"><div class="ei"><i class="fa-solid fa-sitemap"></i></div><div class="et">No departments</div><button class="btn btn-primary" onclick="openM('m-dept')">Add Department</button></div></td></tr>`;
+  }catch(e){toast(e.message,'err');}
+}
+
+async function saveDept(){
+  const code=gv('deptcode'),name=gv('deptname');
+  if(!code||!name){toast('Code and name required','err');return;}
+  try{await api('POST','/masters/departments',{code,name,costCentre:gv('deptcc')||undefined});toast('Department created');closeM('m-dept');sv('deptcode','');sv('deptname','');sv('deptcc','');loadDepts();}
+  catch(e){toast(e.message,'err');}
+}
+
+async function toggleM(path,name,reloadFn){
+  if(!confirm(`Toggle status for "${name}"?`))return;
+  try{await api('PATCH',path);toast('Status updated');reloadFn();}catch(e){toast(e.message,'err');}
+}
+
+// ── PRs ───────────────────────────────────────────────
+async function loadPRs(){
+  const tb=$('prstb');if(!tb)return;
+  tb.innerHTML='<tr><td colspan="8" class="lc"><span class="spin"></span></td></tr>';
+  let url='/purchase/prs?limit=50';
+  const sf=selV('prsf'),pf=selV('prpf');
+  if(sf)url+=`&status=${sf}`;if(pf)url+=`&priority=${pf}`;
+  try{
+    const d=await api('GET',url);const prs=d.data||[];
+    tb.innerHTML=prs.length?prs.map(pr=>`<tr>
+      <td class="tdm">${pr.prNumber}</td>
+      <td>${pr.departmentId?.name||'—'}</td>
+      <td><span class="pdot p${pr.priority[0]}">${pr.priority}</span></td>
+      <td class="tdd">${pr.lines?.length||0} item${pr.lines?.length!==1?'s':''}</td>
+      <td class="tdd">${fmtD(pr.requiredByDate)}</td>
+      <td>${bdg(pr.status)}</td>
+      <td class="tdd">${fmtD(pr.createdAt)}</td>
+      <td class="tda">
+        ${pr.status==='draft'?`<button class="btn btn-sm btn-primary" onclick="submitDoc('pr','${pr._id}','${pr.prNumber}')">Submit</button>`:''}
+        ${pr.status==='pending'?`<button class="btn btn-sm btn-success" onclick="actOn('pr','${pr._id}','approve')"><i class="fa-solid fa-check"></i></button><button class="btn btn-sm btn-danger" onclick="actOn('pr','${pr._id}','reject')"><i class="fa-solid fa-xmark"></i></button>`:''}
+      </td>
+    </tr>`).join(''):`<tr><td colspan="8"><div class="empty"><div class="ei"><i class="fa-solid fa-file-invoice"></i></div><div class="et">No requisitions</div><div class="es">Raise a PR to request items</div><button class="btn btn-primary" onclick="openPRModal()">New PR</button></div></td></tr>`;
+  }catch(e){toast(e.message,'err');}
+}
+
+async function openPRModal(){
+  await prefetch();fillSelects();
+  $('prlines').innerHTML='';addPRLine();showModal('m-pr');
+}
+function showModal(id){openM(id);}
+
+function addPRLine(){
+  const row=document.createElement('tr');
+  row.innerHTML=`
+    <td><select class="lin isel" style="min-width:200px"><option value="">Select item…</option>${_items.map(i=>`<option value="${i._id}" data-uom="${i.uomId?._id||i.uomId||''}">${i.itemCode} · ${i.name}</option>`).join('')}</select></td>
+    <td><select class="lin usel" style="min-width:72px"><option value="">—</option>${_uoms.map(u=>`<option value="${u._id}">${u.code}</option>`).join('')}</select></td>
+    <td><input type="number" class="lin qin" placeholder="Qty" min="0.01" step="0.01"></td>
+    <td><input type="number" class="lin rin" placeholder="Rate" min="0"></td>
+    <td><input type="text" class="lin" placeholder="Purpose"></td>
+    <td><button class="rml" onclick="this.closest('tr').remove()"><i class="fa-solid fa-minus"></i></button></td>
+  `;
+  row.querySelector('.isel').addEventListener('change',function(){
+    const opt=this.options[this.selectedIndex];
+    if(opt.dataset.uom){const us=this.closest('tr').querySelector('.usel');if(us)us.value=opt.dataset.uom;}
+  });
+  $('prlines').appendChild(row);
+  // Lazy load items if not loaded
+  if(!_items.length){
+    api('GET','/masters/items?limit=200&isActive=true').then(d=>{
+      _items=d.data||[];
+      document.querySelectorAll('.isel').forEach(sel=>{
+        sel.innerHTML='<option value="">Select item…</option>'+_items.map(i=>`<option value="${i._id}" data-uom="${i.uomId?._id||i.uomId||''}">${i.itemCode} · ${i.name}</option>`).join('');
+      });
+    }).catch(()=>{});
+  }
+}
+
+async function savePR(doSubmit){
+  const deptId=selV('prdept'),whId=selV('prwh');
+  if(!deptId||!whId){toast('Department and warehouse required','err');return;}
+  const lines=[...$('prlines').querySelectorAll('tr')].map(row=>({
+    itemId:row.querySelector('.isel')?.value,
+    uomId:row.querySelector('.usel')?.value,
+    requiredQty:Number(row.querySelector('.qin')?.value)||0,
+    estimatedRate:Number(row.querySelector('.rin')?.value)||undefined,
+  })).filter(l=>l.itemId&&l.uomId&&l.requiredQty>0);
+  if(!lines.length){toast('Add at least one item with qty','err');return;}
+  try{
+    const pr=await api('POST','/purchase/prs',{departmentId:deptId,warehouseId:whId,priority:selV('prpri'),requiredByDate:gv('prdate')||undefined,purpose:gv('prpurp')||undefined,lines});
+    if(doSubmit)await api('POST',`/purchase/prs/${pr.data._id}/submit`);
+    toast(`PR ${doSubmit?'submitted':'saved'} — ${pr.data.prNumber}`);
+    closeM('m-pr');loadPRs();
+  }catch(e){toast(e.message,'err');}
+}
+
+async function submitDoc(type,id,num){
+  if(!confirm(`Submit ${num} for approval?`))return;
+  try{
+    await api('POST',`/purchase/${type==='pr'?'prs':'pos'}/${id}/submit`);
+    toast(`${num} submitted`);type==='pr'?loadPRs():loadPOs();
+  }catch(e){toast(e.message,'err');}
+}
+
+// ── POs ───────────────────────────────────────────────
+async function loadPOs(){
+  const tb=$('postb');if(!tb)return;
+  tb.innerHTML='<tr><td colspan="8" class="lc"><span class="spin"></span></td></tr>';
+  let url='/purchase/pos?limit=50';const sf=selV('posf');if(sf)url+=`&status=${sf}`;
+  try{
+    const d=await api('GET',url);const pos=d.data||[];
+    const gpo=$('grnpo');if(gpo)gpo.innerHTML='<option value="">Select PO…</option>'+pos.filter(p=>['confirmed','sent','partial'].includes(p.status)).map(p=>`<option value="${p._id}">${p.poNumber} — ${p.vendorId?.name||'?'}</option>`).join('');
+    tb.innerHTML=pos.length?pos.map(po=>`<tr>
+      <td class="tdm">${po.poNumber}</td>
+      <td>${po.vendorId?.name||'—'}</td>
+      <td class="tdd">${po.lines?.length||0} items</td>
+      <td class="tdm">${inr(po.grandTotal)}</td>
+      <td class="tdd">${fmtD(po.deliveryDate)}</td>
+      <td>${bdg(po.status)}</td><td>${bdg(po.approvalStatus)}</td>
+      <td class="tda">
+        ${po.status==='draft'?`<button class="btn btn-sm btn-primary" onclick="submitDoc('po','${po._id}','${po.poNumber}')">Submit</button>`:''}
+        ${po.approvalStatus==='pending'?`<button class="btn btn-sm btn-success" onclick="actOn('po','${po._id}','approve')"><i class="fa-solid fa-check"></i></button><button class="btn btn-sm btn-danger" onclick="actOn('po','${po._id}','reject')"><i class="fa-solid fa-xmark"></i></button>`:''}
+        ${po.approvalStatus==='approved'&&po.status==='confirmed'?`<button class="btn btn-sm btn-secondary" onclick="sendPO('${po._id}','${po.poNumber}')">Send to Vendor</button>`:''}
+      </td>
+    </tr>`).join(''):`<tr><td colspan="8"><div class="empty"><div class="ei"><i class="fa-solid fa-cart-shopping"></i></div><div class="et">No purchase orders</div><button class="btn btn-primary" onclick="openPOModal()">Create PO</button></div></td></tr>`;
+  }catch(e){toast(e.message,'err');}
+}
+
+async function openPOModal(){await prefetch();fillSelects();$('polines').innerHTML='';addPOLine();openM('m-po');}
+
+function addPOLine(){
+  const row=document.createElement('tr');
+  row.innerHTML=`
+    <td><select class="lin isel2" style="min-width:200px"><option value="">Select item…</option>${_items.map(i=>`<option value="${i._id}" data-uom="${i.uomId?._id||i.uomId||''}" data-rate="${i.lastPurchaseRate||''}">${i.itemCode} · ${i.name}</option>`).join('')}</select></td>
+    <td><select class="lin usel2" style="min-width:72px"><option value="">—</option>${_uoms.map(u=>`<option value="${u._id}">${u.code}</option>`).join('')}</select></td>
+    <td><input type="number" class="lin q2" placeholder="Qty" min="0.01" step="0.01" oninput="calcPO()"></td>
+    <td><input type="number" class="lin r2" placeholder="Rate" min="0" oninput="calcPO()"></td>
+    <td><input type="number" class="lin g2" placeholder="18" min="0" max="100" value="18" oninput="calcPO()"></td>
+    <td class="tdm" style="text-align:right;font-size:12px;color:var(--muted)">₹0.00</td>
+    <td><button class="rml" onclick="this.closest('tr').remove();calcPO()"><i class="fa-solid fa-minus"></i></button></td>
+  `;
+  row.querySelector('.isel2').addEventListener('change',function(){
+    const opt=this.options[this.selectedIndex];const tr=this.closest('tr');
+    if(opt.dataset.uom)tr.querySelector('.usel2').value=opt.dataset.uom;
+    if(opt.dataset.rate)tr.querySelector('.r2').value=opt.dataset.rate;
+    calcPO();
+  });
+  $('polines').appendChild(row);
+  if(!_items.length)api('GET','/masters/items?limit=200&isActive=true').then(d=>{_items=d.data||[];document.querySelectorAll('.isel2').forEach(s=>{s.innerHTML='<option value="">Select item…</option>'+_items.map(i=>`<option value="${i._id}" data-uom="${i.uomId?._id||i.uomId||''}" data-rate="${i.lastPurchaseRate||''}">${i.itemCode} · ${i.name}</option>`).join('');});}).catch(()=>{});
+}
+
+function calcPO(){
+  let sub=0,tax=0;
+  $('polines').querySelectorAll('tr').forEach(row=>{
+    const qty=Number(row.querySelector('.q2')?.value||0),rate=Number(row.querySelector('.r2')?.value||0),gst=Number(row.querySelector('.g2')?.value||0);
+    const base=qty*rate,t=+(base*(gst/100)).toFixed(2);sub+=base;tax+=t;
+    const ac=row.querySelector('td:nth-child(6)');if(ac)ac.textContent='₹'+(base+t).toLocaleString('en-IN',{minimumFractionDigits:2});
+  });
+  $('posub').textContent='₹'+sub.toLocaleString('en-IN',{minimumFractionDigits:2});
+  $('potax').textContent='₹'+tax.toLocaleString('en-IN',{minimumFractionDigits:2});
+  $('pogrand').textContent='₹'+(sub+tax).toLocaleString('en-IN',{minimumFractionDigits:2});
+}
+
+async function savePO(doSubmit){
+  const vendorId=selV('povendor'),whId=selV('powh');
+  if(!vendorId||!whId){toast('Vendor and warehouse required','err');return;}
+  const lines=[...$('polines').querySelectorAll('tr')].map(row=>({
+    itemId:row.querySelector('.isel2')?.value,uomId:row.querySelector('.usel2')?.value,
+    orderedQty:Number(row.querySelector('.q2')?.value)||0,unitRate:Number(row.querySelector('.r2')?.value)||0,taxPercent:Number(row.querySelector('.g2')?.value)||0,
+  })).filter(l=>l.itemId&&l.orderedQty>0&&l.unitRate>0);
+  if(!lines.length){toast('Add at least one item with qty and rate','err');return;}
+  try{
+    const po=await api('POST','/purchase/pos',{vendorId,warehouseId:whId,lines,deliveryDate:gv('podeldate')||undefined,paymentTerms:gv('poterms')||undefined,remarks:gv('porem')||undefined});
+    if(doSubmit)await api('POST',`/purchase/pos/${po.data._id}/submit`);
+    toast(`PO ${doSubmit?'submitted':'saved'} — ${po.data.poNumber}`);closeM('m-po');loadPOs();
+  }catch(e){toast(e.message,'err');}
+}
+
+async function sendPO(id,num){
+  if(!confirm(`Mark ${num} as sent to vendor?`))return;
+  try{await api('POST',`/purchase/pos/${id}/send`);toast(`${num} sent`);loadPOs();}catch(e){toast(e.message,'err');}
+}
+
+// ── GRNs ──────────────────────────────────────────────
+async function loadGRNs(){
+  const tb=$('grnstb');if(!tb)return;
+  tb.innerHTML='<tr><td colspan="8" class="lc"><span class="spin"></span></td></tr>';
+  let url='/purchase/grns?limit=50';const sf=selV('grnsf');if(sf)url+=`&status=${sf}`;
+  try{
+    const d=await api('GET',url);const grns=d.data||[];
+    tb.innerHTML=grns.length?grns.map(g=>`<tr>
+      <td class="tdm">${g.grnNumber}</td>
+      <td class="tdm tdd">${g.poId?.poNumber||'—'}</td>
+      <td>${g.vendorId?.name||'—'}</td>
+      <td class="tdm tdd">${g.vendorInvoiceNo||'—'}</td>
+      <td class="tdm">${inr(g.grandTotal)}</td>
+      <td>${bdg(g.status)}</td>
+      <td class="tdd">${g.status==='posted'?fmtDT(g.postedAt):'—'}</td>
+      <td class="tda">
+        ${g.status==='draft'?`<button class="btn btn-sm btn-success" onclick="postGRN('${g._id}','${g.grnNumber}')"><i class="fa-solid fa-check-double"></i> Post</button>`:''}
+        ${g.hasRateVariance?`<span class="bdg b-pending" style="font-size:10px">Rate Var</span>`:''}
+      </td>
+    </tr>`).join(''):`<tr><td colspan="8"><div class="empty"><div class="ei"><i class="fa-solid fa-truck-ramp-box"></i></div><div class="et">No GRNs</div><div class="es">Record goods received against a PO</div><button class="btn btn-primary" onclick="openGRNModal()">New GRN</button></div></td></tr>`;
+  }catch(e){toast(e.message,'err');}
+}
+
+async function openGRNModal(){
+  await loadPOs();
+  $('grnlines').innerHTML='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Select a PO above to load items</td></tr>';
+  ['grnino','grnveh','grndc','grnrem'].forEach(id=>sv(id,''));sv('grnidate','');sv('grnpo','');
+  openM('m-grn');
+}
+
+async function loadPOForGRN(){
+  const poId=selV('grnpo');
+  if(!poId){$('grnlines').innerHTML='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Select a PO above to load items</td></tr>';return;}
+  $('grnlines').innerHTML='<tr><td colspan="6" class="lc"><span class="spin"></span></td></tr>';
+  try{
+    const d=await api('GET',`/purchase/pos/${poId}`);const po=d.data;
+    $('grnlines').innerHTML=po.lines.map(l=>`
+      <tr data-lid="${l._id}" data-iid="${l.itemId?._id||l.itemId}" data-uid="${l.uomId?._id||l.uomId}" data-rate="${l.unitRate}" data-tax="${l.taxPercent||0}">
+        <td><strong>${l.itemId?.itemCode||''}</strong> ${l.itemId?.name||'Item'}</td>
+        <td class="tdm">${l.orderedQty} ${l.uomId?.code||''}</td>
+        <td><input type="number" class="lin grec" value="${Math.max(0,l.orderedQty-l.receivedQty)}" min="0" step="0.01" style="width:90px"></td>
+        <td><input type="number" class="lin gacc" value="${Math.max(0,l.orderedQty-l.receivedQty)}" min="0" step="0.01" style="width:90px"></td>
+        <td><input type="number" class="lin grate" value="${l.unitRate}" min="0" style="width:90px"></td>
+        <td><input type="text" class="lin" placeholder="QC remarks" style="min-width:100px"></td>
+      </tr>
+    `).join('');
+  }catch(e){toast(e.message,'err');}
+}
+
+async function saveGRN(doPost){
+  const poId=selV('grnpo');if(!poId){toast('Select a PO','err');return;}
+  const lines=[...$('grnlines').querySelectorAll('tr[data-lid]')].map(row=>({
+    poLineId:row.dataset.lid,itemId:row.dataset.iid,uomId:row.dataset.uid,
+    receivedQty:Number(row.querySelector('.grec')?.value)||0,
+    acceptedQty:Number(row.querySelector('.gacc')?.value)||0,
+    unitRate:Number(row.querySelector('.grate')?.value)||0,
+    taxPercent:Number(row.dataset.tax)||0,
+    qcRemarks:row.querySelectorAll('.lin')[5]?.value||undefined,
+  })).filter(l=>l.receivedQty>0);
+  if(!lines.length){toast('Enter received qty for at least one item','err');return;}
+  try{
+    const grn=await api('POST','/purchase/grns',{poId,lines,vendorInvoiceNo:gv('grnino')||undefined,vendorInvoiceDate:gv('grnidate')||undefined,vehicleNo:gv('grnveh')||undefined,dcNo:gv('grndc')||undefined,remarks:gv('grnrem')||undefined});
+    if(doPost){await api('POST',`/purchase/grns/${grn.data._id}/post`);toast(`${grn.data.grnNumber} posted — stock updated`);}
+    else toast(`${grn.data.grnNumber} saved as draft`);
+    closeM('m-grn');loadGRNs();
+  }catch(e){toast(e.message,'err');}
+}
+
+async function postGRN(id,num){
+  if(!confirm(`Post ${num} to stock? Cannot be undone.`))return;
+  try{await api('POST',`/purchase/grns/${id}/post`);toast(`${num} posted — stock updated`);loadGRNs();}
+  catch(e){toast(e.message,'err');}
+}
+
+// ── USERS ─────────────────────────────────────────────
+async function loadUsers(){
+  const tb=$('userstb');if(!tb)return;
+  if(me.role==='super_admin'){
+    tb.innerHTML=`<tr><td colspan="5"><div class="empty"><div class="ei"><i class="fa-solid fa-users"></i></div><div class="et">Per-institution users</div><div class="es">Click the user+ icon on an institution card to add users.</div></div></td></tr>`;
+    return;
+  }
+  tb.innerHTML=`<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted);font-size:13px">User list will be available in the next update. Use Add User to create accounts.</td></tr>`;
+}
+
+async function saveUser(){
+  const name=gv('uname'),email=gv('uemail'),role=selV('urole'),pass=gv('upass');
+  if(!name||!email||!role||!pass){toast('All fields required','err');return;}
+  const instTid=$('m-user').dataset.itid||tid;
+  try{
+    await api('POST',`/superadmin/instances/${instTid}/users`,{name,email,password:pass,role});
+    toast('User created');closeM('m-user');sv('uname','');sv('uemail','');sv('upass','');$('m-user').dataset.itid='';
+  }catch(e){toast(e.message,'err');}
+}
+
+// ── AUTO LOGIN ────────────────────────────────────────
+if(tok&&me){
+  api('GET','/auth/me').then(d=>{me=d.user;localStorage.setItem('od_me',JSON.stringify(d.user));initApp();}).catch(()=>{localStorage.clear();});
+}
+</script>
+</body>
+</html>
