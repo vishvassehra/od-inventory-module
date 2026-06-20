@@ -404,6 +404,20 @@ tbody tr:hover td{background:#FAFBFD}
           <div class="pac"><button class="btn btn-primary" onclick="openM('m-dept')"><i class="fa-solid fa-plus"></i> Add Department</button></div>
         </div>
         <div class="card"><div class="tw2"><table><thead><tr><th>Code</th><th>Name</th><th>HOD</th><th>Cost Centre</th><th>Status</th><th></th></tr></thead><tbody id="depttb"><tr><td colspan="6" class="lc"><span class="spin"></span></td></tr></tbody></table></div></div>
+
+      <!-- UOMs -->
+      <div class="page hidden" id="pg-uoms">
+        <div class="ph">
+          <div><div class="pt">Units of Measure</div><div class="ps">UOM codes used across all items</div></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openM('m-uom')"><i class="fa-solid fa-plus"></i> Add UOM</button></div>
+        </div>
+        <div class="card">
+          <div class="fbar">
+            <input class="fs" id="uom-q" placeholder="Search UOMs..." oninput="loadUOMs()">
+            <select class="fsel" id="uom-actf" onchange="loadUOMs()"><option value="true">Active</option><option value="">All</option><option value="false">Inactive</option></select>
+          </div>
+          <div class="tw2"><table><thead><tr><th>Code</th><th>Name</th><th>Status</th><th></th></tr></thead><tbody id="uomstb"><tr><td colspan="4" class="lc"><span class="spin"></span></td></tr></tbody></table></div>
+        </div>
       </div>
 
       <!-- PRs -->
@@ -957,6 +971,24 @@ tbody tr:hover td{background:#FAFBFD}
   </div>
 </div>
 
+
+<div class="ov" id="m-uom">
+  <div class="modal msm">
+    <div class="mhd"><span class="mtitle" id="uom-mt">Add UOM</span><button class="mx" onclick="closeM('m-uom')">x</button></div>
+    <div class="mbody">
+      <input type="hidden" id="uom-eid">
+      <div class="r2">
+        <div class="fg"><label class="fl">Code *</label><input class="inp" id="uom-code" placeholder="e.g. NOS, KG, LTR" style="text-transform:uppercase"></div>
+        <div class="fg"><label class="fl">Name *</label><input class="inp" id="uom-name" placeholder="e.g. Numbers, Kilogram"></div>
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-uom')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUOM()">Save UOM</button>
+    </div>
+  </div>
+</div>
+
 <div class="tw" id="toasts"></div>
 <script>
 const BASE='https://od-inventory-module.onrender.com/api/v1';
@@ -1047,7 +1079,7 @@ function buildNav(role){
   }else{
     h+=grp('Overview')+nav('pg-dashboard','fa-chart-pie','Dashboard');
     h+=grp('Purchase')+nav('pg-prs','fa-file-circle-plus','Requisitions')+nav('pg-pos','fa-cart-shopping','Purchase Orders')+nav('pg-grns','fa-truck-ramp-box','GRN');
-    if(canWrite) h+=grp('Masters')+nav('pg-items','fa-cubes','Items')+nav('pg-vendors','fa-handshake','Vendors')+nav('pg-categories','fa-tags','Categories')+nav('pg-warehouses','fa-warehouse','Warehouses')+nav('pg-departments','fa-sitemap','Departments');
+    if(canWrite) h+=grp('Masters')+nav('pg-items','fa-cubes','Items')+nav('pg-vendors','fa-handshake','Vendors')+nav('pg-categories','fa-tags','Categories')+nav('pg-uoms','fa-ruler','UOM')+nav('pg-warehouses','fa-warehouse','Warehouses')+nav('pg-departments','fa-sitemap','Departments');
     if(isAdmin) h+=grp('Admin')+nav('pg-users','fa-users','Users');
   }
   $('sidenav').innerHTML=h;
@@ -1057,6 +1089,7 @@ const nav=(pg,icon,label)=>`<div class="sbi" id="n-${pg}" onclick="navTo('${pg}'
 
 const pgTitles={
   'pg-instances':['Institutions','Manage all institution instances'],
+  'pg-uoms':['Units of Measure','UOM codes for all items'],
   'pg-dashboard':['Dashboard','Inventory overview'],
   'pg-items':['Item Master','Consumables and assets'],
   'pg-vendors':['Vendors','Suppliers and service providers'],
@@ -1071,6 +1104,7 @@ const pgTitles={
 
 const pgLoaders={
   'pg-instances':loadInstances,'pg-dashboard':loadDash,
+  'pg-uoms':loadUOMs,
   'pg-items':()=>{prefetch();loadItems();},'pg-vendors':loadVendors,
   'pg-categories':loadCats,'pg-warehouses':loadWHs,'pg-departments':loadDepts,
   'pg-prs':loadPRs,'pg-pos':loadPOs,'pg-grns':loadGRNs,'pg-users':loadUsers,
@@ -2302,6 +2336,53 @@ closeM = function(id) {
   }
   _origCloseM(id);
 };
+
+
+// ── UOM MANAGEMENT ─────────────────────────────────────────────
+async function loadUOMs(){
+  const tbody=$('uomstb'); if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="4" class="lc"><span class="spin"></span></td></tr>';
+  let url='/masters/uoms?limit=200';
+  const q=gv('uom-q'), af=selV('uom-actf');
+  if(q) url+=`&search=${encodeURIComponent(q)}`;
+  if(af!=='') url+=`&isActive=${af}`;
+  try{
+    const d=await api('GET',url);
+    _uoms=d.data||[];
+    tbody.innerHTML=_uoms.length?_uoms.map(u=>`<tr>
+      <td class="tdm">${u.code}</td>
+      <td><strong>${u.name}</strong></td>
+      <td>${bdg(u.isActive?'active':'inactive')}</td>
+      <td class="tda">
+        <button class="btn btn-sm btn-secondary btn-icon" onclick="editUOM('${u._id}','${u.code}','${u.name}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-sm btn-ghost" onclick="toggleM('/masters/uoms/${u._id}/toggle-active','${u.name}',loadUOMs)">${u.isActive?'Deactivate':'Activate'}</button>
+      </td>
+    </tr>`).join(''):`<tr><td colspan="4"><div class="empty"><div class="ei"><i class="fa-solid fa-ruler"></i></div><div class="et">No UOMs found</div><div class="es">Add units of measure used by your items</div><button class="btn btn-primary" onclick="openM('m-uom')">Add UOM</button></div></td></tr>`;
+  }catch(e){ toast(e.message,'err'); }
+}
+
+function editUOM(id,code,name){
+  sv('uom-eid',id);
+  $('uom-mt').textContent='Edit UOM';
+  sv('uom-code',code);
+  sv('uom-name',name);
+  openM('m-uom');
+}
+
+async function saveUOM(){
+  const id=gv('uom-eid');
+  const code=gv('uom-code').toUpperCase();
+  const name=gv('uom-name');
+  if(!code||!name){ toast('Code and name required','err'); return; }
+  try{
+    if(id){ await api('PATCH',`/masters/uoms/${id}`,{code,name}); toast('UOM updated'); }
+    else{ await api('POST','/masters/uoms',{code,name}); toast('UOM created'); }
+    closeM('m-uom');
+    sv('uom-eid',''); sv('uom-code',''); sv('uom-name','');
+    $('uom-mt').textContent='Add UOM';
+    loadUOMs();
+  }catch(e){ toast(e.message,'err'); }
+}
 
 // ── AUTO LOGIN ────────────────────────────────────────
 if(tok&&me){
