@@ -1659,25 +1659,6 @@ async function postGRN(id,num){
   catch(e){toast(e.message,'err');}
 }
 
-// ── USERS ─────────────────────────────────────────────
-async function loadUsers(){
-  const tb=$('userstb');if(!tb)return;
-  if(me.role==='super_admin'){
-    tb.innerHTML=`<tr><td colspan="5"><div class="empty"><div class="ei"><i class="fa-solid fa-users"></i></div><div class="et">Per-institution users</div><div class="es">Click the user+ icon on an institution card to add users.</div></div></td></tr>`;
-    return;
-  }
-  tb.innerHTML=`<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--muted);font-size:13px">User list will be available in the next update. Use Add User to create accounts.</td></tr>`;
-}
-
-async function saveUser(){
-  const name=gv('uname'),email=gv('uemail'),role=selV('urole'),pass=gv('upass');
-  if(!name||!email||!role||!pass){toast('All fields required','err');return;}
-  const instTid=$('m-user').dataset.itid||tid;
-  try{
-    await api('POST',`/superadmin/instances/${instTid}/users`,{name,email,password:pass,role});
-    toast('User created');closeM('m-user');sv('uname','');sv('uemail','');sv('upass','');$('m-user').dataset.itid='';
-  }catch(e){toast(e.message,'err');}
-}
 
 
 // ══════════════════════════════════════════
