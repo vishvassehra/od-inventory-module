@@ -1759,7 +1759,7 @@ function filterSummary() {
     <td><strong>${s.itemName}</strong></td>
     <td class="tdd">${s.categoryName || '—'}</td>
     <td class="tdd">${s.warehouseName || '—'}</td>
-    <td class="tdm" style="text-align:right;font-weight:600;color:${s.stock <= 0 ? 'var(--danger)' : s.isBelowReorder ? 'var(--warning)' : 'var(--success)'}">${s.stock}</td>
+    <td class="tdm" style="text-align:right;font-weight:600" class="${s.stock <= 0 ? 'text-danger' : s.isBelowReorder ? 'text-warn' : 'text-ok'}">${s.stock}</td>
     <td class="tdm tdd" style="text-align:right">${s.reorderQty || 0}</td>
     <td class="tdm" style="text-align:right">${inr(s.stockValue)}</td>
     <td>${s.stock <= 0 ? '<span class="bdg b-rejected">Out of Stock</span>' : s.isBelowMin ? '<span class="bdg b-pending">Below Min</span>' : s.isBelowReorder ? '<span class="bdg b-pending">Low Stock</span>' : '<span class="bdg b-active">OK</span>'}</td>
@@ -1821,7 +1821,7 @@ async function loadLedger() {
       <td class="tdd">${e.warehouseId?.name || '—'}</td>
       <td class="tdm" style="text-align:right;color:var(--success)">${e.qty > 0 ? '+' + e.qty : '—'}</td>
       <td class="tdm" style="text-align:right;color:var(--danger)">${e.qty < 0 ? Math.abs(e.qty) : '—'}</td>
-      <td class="tdm" style="text-align:right;font-weight:600;color:${e.runningBalance <= 0 ? 'var(--danger)' : 'var(--ink)'}">${e.runningBalance}</td>
+      <td class="tdm" style="text-align:right;font-weight:600;color:" class="${e.runningBalance <= 0 ? 'td-danger' : ''}">${e.runningBalance}</td>
       <td class="tdm tdd">${e.unitRate ? inr(e.unitRate) : '—'}</td>
     </tr>`).join('') : `<tr><td colspan="9"><div class="empty"><div class="ei"><i class="fa-solid fa-scroll"></i></div><div class="et">No ledger entries</div><div class="es">No transactions found for the selected filters</div></div></td></tr>`;
   } catch (e) { toast(e.message, 'err'); }
@@ -1991,7 +1991,7 @@ async function openIssueModal(sivId) {
       return `<tr data-lid="${line._id}" data-iid="${line.itemId?._id || line.itemId}" data-wid="${line.warehouseId?._id || line.warehouseId}">
         <td><strong>${line.itemId?.itemCode || ''}</strong> ${line.itemId?.name || 'Item'}<div class="tdd" style="font-size:11px">${line.warehouseId?.name || ''}</div></td>
         <td class="tdm">${line.requestedQty} ${line.uomId?.code || ''}</td>
-        <td class="tdm" style="color:${avail <= 0 ? 'var(--danger)' : avail < line.requestedQty ? 'var(--warning)' : 'var(--success)';font-weight:600}">${avail}</td>
+        <td class="tdm" style="font-weight:600;color:${avail <= 0 ? 'var(--danger)' : avail < line.requestedQty ? 'var(--warning)' : 'var(--success)'}">${avail}</td>
         <td><input type="number" class="lin issue-qty" value="${Math.min(line.requestedQty, avail)}" min="0" max="${avail}" step="0.01" style="width:90px"></td>
         <td><input type="text" class="lin" placeholder="Remarks" style="min-width:100px"></td>
       </tr>`;
@@ -2111,7 +2111,7 @@ async function loadLowStock() {
       <td class="tdm">${item.itemCode}</td>
       <td><strong>${item.itemName}</strong></td>
       <td class="tdd">${item.warehouseName || '—'}</td>
-      <td class="tdm" style="text-align:right;color:${item.currentStock <= 0 ? 'var(--danger)' : 'var(--warning)'};font-weight:600">${item.currentStock}</td>
+      <td class="tdm" style="text-align:right;font-weight:600;color:${item.currentStock <= 0 ? 'var(--danger)' : 'var(--warning)'}">${item.currentStock}</td>
       <td class="tdm tdd" style="text-align:right">${item.reorderQty}</td>
       <td class="tdm" style="text-align:right;color:var(--danger);font-weight:600">${item.shortage}</td>
       <td class="tda">
