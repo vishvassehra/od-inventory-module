@@ -1014,7 +1014,15 @@ const gv=id=>($( id)?.value||'').trim();
 const sv=(id,v)=>{const e=$(id);if(e)e.value=v??''};
 const selV=id=>$(id)?.value||'';
 const openM=id=>$(id)?.classList.add('show');
-const closeM=id=>$(id)?.classList.remove('show');
+const closeM=id=>{
+  $(id)?.classList.remove('show');
+  // Reset user modal on close
+  if(id==='m-user'&&_editUserId){
+    _editUserId=null;
+    const upEl=$('upass'); if(upEl) upEl.closest('.fg').style.display='';
+    const mt=$('m-user')?.querySelector('.mtitle'); if(mt) mt.textContent='Add User';
+  }
+};
 document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show')}));
 
 const toast=(msg,type='ok')=>{
@@ -1084,6 +1092,7 @@ function buildNav(role){
     h+=grp('Purchase')+nav('pg-prs','fa-file-circle-plus','Requisitions')+nav('pg-pos','fa-cart-shopping','Purchase Orders')+nav('pg-grns','fa-truck-ramp-box','GRN');
     if(canWrite) h+=grp('Masters')+nav('pg-items','fa-cubes','Items')+nav('pg-vendors','fa-handshake','Vendors')+nav('pg-categories','fa-tags','Categories')+nav('pg-uoms','fa-ruler','UOM')+nav('pg-warehouses','fa-warehouse','Warehouses')+nav('pg-departments','fa-sitemap','Departments');
     if(isAdmin) h+=grp('Admin')+nav('pg-users','fa-users','Users');
+    if(canWrite) h+=grp('Stock')+nav('pg-stock-summary','fa-chart-bar','Stock Summary')+nav('pg-sivs','fa-boxes-stacked','Stock Indents')+nav('pg-stock-returns','fa-rotate-left','Returns')+nav('pg-stock-ledger','fa-scroll','Ledger')+nav('pg-low-stock','fa-triangle-exclamation','Low Stock');
   }
   $('sidenav').innerHTML=h;
 }
@@ -1240,9 +1249,11 @@ async function loadDash(){
 }
 
 function actOn(dt,id,action){
+  // Label override for siv
+  const docLabel = dt==='siv' ? 'Stock Indent' : dt==='pr' ? 'PR' : 'PO';
   pendingAct={dt,id,action};
-  $('actt').textContent=action==='approve'?'Approve Request':'Reject Request';
-  $('actd').textContent=`Confirm ${action} of this ${dt.toUpperCase()}?`;
+  $('actt').textContent=action==='approve'?`Approve ${docLabel}`:`Reject ${docLabel}`;
+  $('actd').textContent=`Confirm ${action} of this ${docLabel}?`;
   $('actl').textContent=action==='reject'?'Reason *':'Remarks (optional)';
   $('actbtn').className=`btn ${action==='approve'?'btn-success':'btn-danger'}`;
   $('actbtn').innerHTML=`<i class="fa-solid fa-${action==='approve'?'check':'xmark'}"></i> ${action==='approve'?'Approve':'Reject'}`;
@@ -1254,8 +1265,13 @@ async function confirmAct(){
   const reason=gv('actr');
   if(action==='reject'&&!reason){toast('Rejection reason required','err');return;}
   try{
-    await api('POST',`/purchase/${dt==='pr'?'prs':'pos'}/${id}/${action}`,{reason,remarks:reason});
-    closeM('m-action');toast(`${dt.toUpperCase()} ${action}d`);sv('actr','');loadDash();pendingAct=null;
+    let path;
+    if(dt==='siv') path=`/stock/sivs/${id}/${action}`;
+    else path=`/purchase/${dt==='pr'?'prs':'pos'}/${id}/${action}`;
+    await api('POST',path,{reason,remarks:reason});
+    closeM('m-action');toast(`${dt==='siv'?'SIV':dt.toUpperCase()} ${action}d`);
+    sv('actr','');pendingAct=null;
+    if(dt==='siv') loadSIVs(); else loadDash();
   }catch(e){toast(e.message,'err');}
 }
 
@@ -1720,22 +1736,7 @@ Object.assign(pgLoaders, {
   'pg-low-stock':     loadLowStock,
 });
 
-// ── patch buildNav to include Stock section ──
-const _origBuildNav = buildNav;
-buildNav = function(role) {
-  _origBuildNav(role);
-  if (role === 'super_admin') return;
-  const canWrite = ['inst_admin', 'purchase_officer', 'store_manager'].includes(role);
-  if (!canWrite) return;
-  // Append stock section to sidebar
-  const extra = `<div class="sbgl">Stock</div>
-    ${nav('pg-stock-summary','fa-chart-bar','Stock Summary')}
-    ${nav('pg-sivs','fa-boxes-stacked','Stock Indents')}
-    ${nav('pg-stock-returns','fa-rotate-left','Returns')}
-    ${nav('pg-stock-ledger','fa-scroll','Ledger')}
-    ${nav('pg-low-stock','fa-triangle-exclamation','Low Stock')}`;
-  $('sidenav').innerHTML += extra;
-};
+// Stock nav merged into buildNav above
 
 // ── cached stock summary data ─────────────
 let _summaryData = [];
@@ -1975,33 +1976,9 @@ async function submitSIV(id, num) {
 }
 
 // patch actOn to handle siv
-const _origActOn = actOn;
-actOn = function(dt, id, action) {
-  if (dt === 'siv') {
-    pendingAct = { dt, id, action };
-    $('actt').textContent = action === 'approve' ? 'Approve Indent' : 'Reject Indent';
-    $('actd').textContent = `Confirm ${action} of this stock indent?`;
-    $('actl').textContent = action === 'reject' ? 'Reason *' : 'Remarks (optional)';
-    $('actbtn').className = `btn ${action === 'approve' ? 'btn-success' : 'btn-danger'}`;
-    $('actbtn').innerHTML = `<i class="fa-solid fa-${action === 'approve' ? 'check' : 'xmark'}"></i> ${action === 'approve' ? 'Approve' : 'Reject'}`;
-    sv('actr', ''); openM('m-action');
-  } else { _origActOn(dt, id, action); }
-};
-
+// actOn merged above
 // patch confirmAct to handle siv
-const _origConfirmAct = confirmAct;
-confirmAct = async function() {
-  if (pendingAct?.dt === 'siv') {
-    const { id, action } = pendingAct;
-    const reason = gv('actr');
-    if (action === 'reject' && !reason) { toast('Rejection reason required', 'err'); return; }
-    try {
-      await api('POST', `/stock/sivs/${id}/${action}`, { reason });
-      closeM('m-action'); toast(`SIV ${action}d`); sv('actr', ''); loadSIVs(); pendingAct = null;
-    } catch (e) { toast(e.message, 'err'); }
-  } else { _origConfirmAct(); }
-};
-
+// confirmAct merged above
 let _currentSIVForIssue = null;
 
 async function openIssueModal(sivId) {
@@ -2206,23 +2183,7 @@ async function saveOpeningStock() {
 }
 
 // ─── patch dashboard quick actions to include stock ───
-const _origLoadDash = loadDash;
-loadDash = async function() {
-  await _origLoadDash();
-  // Add low stock to dashboard
-  try {
-    const d = await api('GET', '/stock/low-stock');
-    const count = d.data?.length || 0;
-    if (count > 0) {
-      const badge = $('pabdg');
-      if (badge) {
-        const cur = parseInt(badge.textContent) || 0;
-        badge.textContent = cur + count;
-      }
-    }
-  } catch {}
-};
-
+// loadDash patch removed - low stock shown in dedicated page
 
 // ══════════════════════════════════════════
 //  USER MANAGEMENT (1E)
@@ -2330,16 +2291,7 @@ async function toggleUser(id, name, isActive) {
 }
 
 // Reset modal state when closing
-const _origCloseM = closeM;
-closeM = function(id) {
-  if (id === 'm-user' && _editUserId) {
-    _editUserId = null;
-    $('upass').closest('.fg').style.display = '';
-    $('m-user').querySelector('.mtitle').textContent = 'Add User';
-  }
-  _origCloseM(id);
-};
-
+// closeM patch removed - user modal reset handled inline
 
 // ── UOM MANAGEMENT ─────────────────────────────────────────────
 async function loadUOMs(){
