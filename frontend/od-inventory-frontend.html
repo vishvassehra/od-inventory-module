@@ -2205,6 +2205,123 @@ loadDash = async function() {
   } catch {}
 };
 
+
+// ══════════════════════════════════════════
+//  USER MANAGEMENT (1E)
+// ══════════════════════════════════════════
+
+// Patch pgLoaders for users
+pgLoaders['pg-users'] = loadUsers;
+
+async function loadUsers() {
+  const tbody = $('userstb'); if (!tbody) return;
+  if (me.role === 'super_admin') {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="ei"><i class="fa-solid fa-users"></i></div><div class="et">Per-institution users</div><div class="es">Click the user+ icon on an institution card to manage users per institution.</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = '<tr><td colspan="6" class="lc"><span class="spin"></span></td></tr>';
+  try {
+    const d = await api('GET', '/users?limit=100');
+    const users = d.data || [];
+    const roleCls = {inst_admin:'b-school',purchase_officer:'b-sent',store_manager:'b-active',hod:'b-pending',dept_staff:'b-draft'};
+    tbody.innerHTML = users.length ? users.map((u,i) => `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:50%;background:${avc(i)};display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0">${initials(u.name)}</div>
+          <div><div style="font-weight:500">${u.name}</div>${u.mustChangePassword ? '<div style="font-size:10px;color:var(--warning)"><i class="fa-solid fa-exclamation-triangle"></i> Must change password</div>' : ''}</div>
+        </div>
+      </td>
+      <td class="tdd">${u.email}</td>
+      <td><span class="bdg ${roleCls[u.role]||'b-draft'}">${roleLabel(u.role)}</span></td>
+      <td class="tdd">${u.lastLoginAt ? fmtDT(u.lastLoginAt) : 'Never'}</td>
+      <td>${bdg(u.isActive ? 'active' : 'inactive')}</td>
+      <td class="tda">
+        <button class="btn btn-sm btn-secondary btn-icon" onclick="editUser('${u._id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-sm btn-ghost btn-icon" onclick="resetUserPass('${u._id}','${u.name}')" title="Reset password"><i class="fa-solid fa-key"></i></button>
+        <button class="btn btn-sm btn-ghost btn-icon" onclick="toggleUser('${u._id}','${u.name}',${u.isActive})" title="${u.isActive?'Deactivate':'Activate'}"><i class="fa-solid fa-power-off" style="color:${u.isActive?'var(--danger)':'var(--success)'}"></i></button>
+      </td>
+    </tr>`).join('') : `<tr><td colspan="6"><div class="empty"><div class="ei"><i class="fa-solid fa-users"></i></div><div class="et">No users yet</div><div class="es">Add users to give them access to this institution</div><button class="btn btn-primary" onclick="openM('m-user')">Add User</button></div></td></tr>`;
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+let _editUserId = null;
+
+async function editUser(id) {
+  try {
+    const d = await api('GET', `/users?limit=100`);
+    const user = (d.data || []).find(u => u._id === id);
+    if (!user) { toast('User not found','err'); return; }
+    _editUserId = id;
+    // populate modal
+    sv('uname', user.name); sv('uemail', user.email); sv('urole', user.role); sv('upass', '');
+    $('m-user').querySelector('.mtitle').textContent = 'Edit User';
+    // hide password field for edit
+    $('upass').closest('.fg').style.display = 'none';
+    openM('m-user');
+  } catch(e) { toast(e.message,'err'); }
+}
+
+async function saveUser() {
+  const name = gv('uname'), email = gv('uemail'), role = selV('urole'), pass = gv('upass');
+  const instTid = $('m-user').dataset.itid || tid;
+
+  if (_editUserId) {
+    // Edit existing
+    if (!name || !role) { toast('Name and role required','err'); return; }
+    try {
+      await api('PATCH', `/users/${_editUserId}`, { name, role });
+      toast('User updated'); closeM('m-user');
+      _editUserId = null; $('upass').closest('.fg').style.display = '';
+      $('m-user').querySelector('.mtitle').textContent = 'Add User';
+      loadUsers();
+    } catch(e) { toast(e.message,'err'); }
+    return;
+  }
+
+  if (!name || !email || !role || !pass) { toast('All fields required','err'); return; }
+
+  try {
+    if (me.role === 'super_admin') {
+      await api('POST', `/superadmin/instances/${instTid}/users`, { name, email, password: pass, role });
+    } else {
+      await api('POST', '/users', { name, email, password: pass, role });
+    }
+    toast('User created'); closeM('m-user');
+    sv('uname',''); sv('uemail',''); sv('upass',''); $('m-user').dataset.itid = '';
+    loadUsers();
+  } catch(e) { toast(e.message,'err'); }
+}
+
+async function resetUserPass(id, name) {
+  const newPass = prompt(`Set new temporary password for "${name}" (min 8 chars):`);
+  if (!newPass) return;
+  if (newPass.length < 8) { toast('Password must be at least 8 characters','err'); return; }
+  try {
+    await api('PATCH', `/users/${id}/reset-password`, { newPassword: newPass });
+    toast(`Password reset for ${name}`);
+  } catch(e) { toast(e.message,'err'); }
+}
+
+async function toggleUser(id, name, isActive) {
+  if (!confirm(`${isActive ? 'Deactivate' : 'Activate'} user "${name}"?`)) return;
+  try {
+    await api('PATCH', `/users/${id}/toggle-active`);
+    toast(`User ${isActive ? 'deactivated' : 'activated'}`);
+    loadUsers();
+  } catch(e) { toast(e.message,'err'); }
+}
+
+// Reset modal state when closing
+const _origCloseM = closeM;
+closeM = function(id) {
+  if (id === 'm-user' && _editUserId) {
+    _editUserId = null;
+    $('upass').closest('.fg').style.display = '';
+    $('m-user').querySelector('.mtitle').textContent = 'Add User';
+  }
+  _origCloseM(id);
+};
+
 // ── AUTO LOGIN ────────────────────────────────────────
 if(tok&&me){
   api('GET','/auth/me').then(d=>{me=d.user;localStorage.setItem('od_me',JSON.stringify(d.user));initApp();}).catch(()=>{localStorage.clear();});
