@@ -409,12 +409,15 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="page hidden" id="pg-uoms">
         <div class="ph">
           <div><div class="pt">Units of Measure</div><div class="ps">UOM codes used across all items</div></div>
-          <div class="pac"><button class="btn btn-primary" onclick="openM('m-uom')"><i class="fa-solid fa-plus"></i> Add UOM</button></div>
+          <div class="pac">
+            <button class="btn btn-secondary" onclick="seedDefaultUOMs()" title="Seed default UOMs"><i class="fa-solid fa-database"></i> Seed Defaults</button>
+            <button class="btn btn-primary" onclick="openM('m-uom')"><i class="fa-solid fa-plus"></i> Add UOM</button>
+          </div>
         </div>
         <div class="card">
           <div class="fbar">
             <input class="fs" id="uom-q" placeholder="Search UOMs..." oninput="loadUOMs()">
-            <select class="fsel" id="uom-actf" onchange="loadUOMs()"><option value="true">Active</option><option value="">All</option><option value="false">Inactive</option></select>
+            <select class="fsel" id="uom-actf" onchange="loadUOMs()"><option value="">All</option><option value="true">Active</option><option value="false">Inactive</option></select>
           </div>
           <div class="tw2"><table><thead><tr><th>Code</th><th>Name</th><th>Status</th><th></th></tr></thead><tbody id="uomstb"><tr><td colspan="4" class="lc"><span class="spin"></span></td></tr></tbody></table></div>
         </div>
@@ -2345,7 +2348,7 @@ async function loadUOMs(){
   let url='/masters/uoms?limit=200';
   const q=gv('uom-q'), af=selV('uom-actf');
   if(q) url+=`&search=${encodeURIComponent(q)}`;
-  if(af!=='') url+=`&isActive=${af}`;
+  if(af) url+=`&isActive=${af}`;
   try{
     const d=await api('GET',url);
     _uoms=d.data||[];
@@ -2382,6 +2385,28 @@ async function saveUOM(){
     $('uom-mt').textContent='Add UOM';
     loadUOMs();
   }catch(e){ toast(e.message,'err'); }
+}
+
+
+// ── SEED DEFAULT UOMs ──────────────────────────────────
+const DEFAULT_UOMS = [
+  {code:'NOS',name:'Numbers'},{code:'KG',name:'Kilogram'},
+  {code:'LTR',name:'Litre'},{code:'BOX',name:'Box'},
+  {code:'REM',name:'Ream'},{code:'MTR',name:'Metre'},
+  {code:'PKT',name:'Packet'},{code:'SET',name:'Set'},
+  {code:'PRS',name:'Pairs'},{code:'BTL',name:'Bottle'},
+  {code:'GM',name:'Gram'},{code:'ML',name:'Millilitre'},
+];
+
+async function seedDefaultUOMs(){
+  if(!confirm('Seed 12 default UOMs (NOS, KG, LTR, BOX, REM, MTR...)? Existing ones will be skipped.')) return;
+  let created=0, skipped=0;
+  for(const uom of DEFAULT_UOMS){
+    try{ await api('POST','/masters/uoms',uom); created++; }
+    catch(e){ if(e.message.includes('Duplicate')||e.message.includes('duplicate')) skipped++; else console.error(uom.code, e.message); }
+  }
+  toast(`Seeded ${created} UOMs (${skipped} already existed)`);
+  loadUOMs();
 }
 
 // ── AUTO LOGIN ────────────────────────────────────────
