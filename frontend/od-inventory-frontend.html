@@ -113,7 +113,7 @@ button{cursor:pointer}
 .lerr.show{display:flex}
 
 /* SHELL */
-#av{position:fixed;inset:0;display:flex;display:none}
+#av{position:fixed;inset:0;display:none;align-items:stretch}
 .sb{width:234px;flex-shrink:0;background:var(--ink);display:flex;flex-direction:column;height:100%}
 .sbt{padding:14px;border-bottom:1px solid rgba(255,255,255,.07)}
 .sbb{display:flex;align-items:center;gap:9px}
@@ -141,13 +141,14 @@ button{cursor:pointer}
 .sbue{font-size:10px;color:rgba(255,255,255,.32);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
 .sblo{margin-left:auto;color:rgba(255,255,255,.28);font-size:13px;background:none;border:none;cursor:pointer;padding:4px}
 .sblo:hover{color:var(--danger)}
-.mn{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.mn{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0}
 .tb{height:54px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:10px;flex-shrink:0}
 .tbt{font-size:15px;font-weight:600}
 .tba{margin-left:auto;display:flex;gap:8px;align-items:center}
-.ct{flex:1;overflow-y:auto;padding:24px}
+.ct{flex:1;overflow-y:auto;padding:24px;min-height:0}
 .ct::-webkit-scrollbar{width:5px}
 .ct::-webkit-scrollbar-thumb{background:var(--border-s);border-radius:3px}
+.page{display:block;width:100%}
 
 /* PAGE */
 .ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;gap:16px;flex-wrap:wrap}
@@ -166,7 +167,7 @@ button{cursor:pointer}
 .ki{position:absolute;top:18px;right:18px;font-size:20px;opacity:.09}
 
 /* CARD */
-.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--rl)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--rl);display:block}
 .chd{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .ct2{font-size:13px;font-weight:600}
 .cbody{padding:18px}
@@ -410,9 +411,19 @@ tbody tr:hover td{background:#FAFBFD}
         <div class="ph">
           <div><div class="pt">Units of Measure</div><div class="ps">UOM codes used across all items</div></div>
           <div class="pac">
-            <button class="btn btn-secondary" onclick="seedDefaultUOMs()" title="Seed default UOMs"><i class="fa-solid fa-database"></i> Seed Defaults</button>
+            <button class="btn btn-secondary" onclick="seedDefaultUOMs()" title="Seed 12 default UOMs"><i class="fa-solid fa-database"></i> Seed Defaults</button>
             <button class="btn btn-primary" onclick="openM('m-uom')"><i class="fa-solid fa-plus"></i> Add UOM</button>
           </div>
+        </div>
+        <!-- Always-visible quick add strip when table is empty -->
+        <div id="uom-quickadd" style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;gap:14px">
+          <i class="fa-solid fa-circle-info" style="color:#2563EB;font-size:18px"></i>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:13px">No Units of Measure yet</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">You must add UOMs before creating items. Click <strong>Seed Defaults</strong> to add 12 standard UOMs instantly, or <strong>Add UOM</strong> to add one manually.</div>
+          </div>
+          <button class="btn btn-secondary" onclick="seedDefaultUOMs()"><i class="fa-solid fa-database"></i> Seed Defaults</button>
+          <button class="btn btn-primary" onclick="openM('m-uom')"><i class="fa-solid fa-plus"></i> Add UOM</button>
         </div>
         <div class="card">
           <div class="fbar">
@@ -2410,6 +2421,9 @@ async function loadUOMs(){
   try{
     const d=await api('GET',url);
     _uoms=d.data||[];
+    // Show/hide the quick-add banner based on whether UOMs exist
+    const banner=$('uom-quickadd');
+    if(banner) banner.style.display=_uoms.length?'none':'flex';
     tbody.innerHTML=_uoms.length?_uoms.map(u=>`<tr>
       <td class="tdm">${u.code}</td>
       <td><strong>${u.name}</strong></td>
@@ -2418,8 +2432,8 @@ async function loadUOMs(){
         <button class="btn btn-sm btn-secondary btn-icon" onclick="editUOM('${u._id}','${u.code}','${u.name}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
         <button class="btn btn-sm btn-ghost" onclick="toggleM('/masters/uoms/${u._id}/toggle-active','${u.name}',loadUOMs)">${u.isActive?'Deactivate':'Activate'}</button>
       </td>
-    </tr>`).join(''):`<tr><td colspan="4"><div class="empty"><div class="ei"><i class="fa-solid fa-ruler"></i></div><div class="et">No UOMs found</div><div class="es">Add units of measure used by your items</div><button class="btn btn-primary" onclick="openM('m-uom')">Add UOM</button></div></td></tr>`;
-  }catch(e){ toast(e.message,'err'); }
+    </tr>`).join(''):`<tr><td colspan="4"><div class="empty"><div class="ei"><i class="fa-solid fa-ruler"></i></div><div class="et">No UOMs found</div><div class="es">Use the buttons above to add or seed UOMs</div></div></td></tr>`;
+  }catch(e){ toast(e.message,'err'); tbody.innerHTML=`<tr><td colspan="4"><div class="empty"><div class="et">Error loading UOMs</div><div class="es">${e.message}</div><button class="btn btn-secondary" style="margin-top:12px" onclick="loadUOMs()">Retry</button></div></td></tr>`; }
 }
 
 function editUOM(id,code,name){
