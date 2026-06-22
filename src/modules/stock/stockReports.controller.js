@@ -38,7 +38,7 @@ exports.stockSummary = async (req, res, next) => {
           as: 'warehouse',
         },
       },
-      { $unwind: { path: '$warehouse', preserveNullAndEmpty: true } },
+      { $unwind: { path: '$warehouse', preserveNullAndEmptyArrays:: true } },
       {
         $lookup: {
           from: 'categories',
@@ -47,7 +47,7 @@ exports.stockSummary = async (req, res, next) => {
           as: 'category',
         },
       },
-      { $unwind: { path: '$category', preserveNullAndEmpty: true } },
+      { $unwind: { path: '$category', preserveNullAndEmptyArrays:: true } },
       // Filter by category if provided
       ...(categoryId ? [{ $match: { 'item.categoryId': new mongoose.Types.ObjectId(categoryId) } }] : []),
       {
@@ -151,7 +151,7 @@ exports.lowStock = async (req, res, next) => {
       { $unwind: '$item' },
       { $match: { $expr: { $lte: ['$stock', '$item.reorderQty'] }, 'item.isActive': true } },
       { $lookup: { from: 'warehouses', localField: '_id.warehouseId', foreignField: '_id', as: 'warehouse' } },
-      { $unwind: { path: '$warehouse', preserveNullAndEmpty: true } },
+      { $unwind: { path: '$warehouse', preserveNullAndEmptyArrays:: true } },
       {
         $project: {
           _id: 0,
