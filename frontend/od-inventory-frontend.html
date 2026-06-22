@@ -486,6 +486,7 @@ tbody tr:hover td{background:#FAFBFD}
           <div><div class="pt">Stock Summary</div><div class="ps">Current stock levels across all warehouses</div></div>
           <div class="pac">
             <button class="btn btn-secondary btn-sm" onclick="loadStockSummary()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportStockCSV()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
             <button class="btn btn-primary" onclick="openM('m-opening-stock')"><i class="fa-solid fa-plus"></i> Opening Stock</button>
           </div>
         </div>
@@ -607,7 +608,87 @@ tbody tr:hover td{background:#FAFBFD}
         </div>
       </div>
 
+      <!-- STOCK TRANSFERS -->
+      <div class="page hidden" id="pg-stock-transfer">
+        <div class="ph">
+          <div><div class="pt">Inter-Warehouse Transfer</div><div class="ps">Move stock between storage locations</div></div>
+          <div class="pac role-store-admin"><button class="btn btn-primary" onclick="openTransferModal()"><i class="fa-solid fa-right-left"></i> New Transfer</button></div>
+        </div>
+        <div class="card">
+          <div class="fbar">
+            <select class="fsel" id="tr-sf" onchange="loadTransfers()"><option value="">All Status</option><option value="draft">Draft</option><option value="posted">Posted</option></select>
+          </div>
+          <div class="tw2"><table>
+            <thead><tr><th>Transfer No.</th><th>From</th><th>To</th><th>Items</th><th>Status</th><th>Date</th><th></th></tr></thead>
+            <tbody id="tr-tbody"><tr><td colspan="7" class="lc"><span class="spin"></span></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- STOCK ADJUSTMENTS -->
+      <div class="page hidden" id="pg-stock-adjust">
+        <div class="ph">
+          <div><div class="pt">Stock Adjustments</div><div class="ps">Manual surplus / shortage corrections</div></div>
+          <div class="pac role-admin"><button class="btn btn-primary" onclick="openAdjustModal()"><i class="fa-solid fa-sliders"></i> New Adjustment</button></div>
+        </div>
+        <div class="card">
+          <div class="tw2"><table>
+            <thead><tr><th>Adj. No.</th><th>Reason</th><th>Lines</th><th>Posted At</th><th>By</th><th></th></tr></thead>
+            <tbody id="adj-tbody"><tr><td colspan="6" class="lc"><span class="spin"></span></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
 <!-- ── 1D MODALS ── -->
+
+<!-- Stock Transfer Modal -->
+<div class="ov" id="m-transfer">
+  <div class="modal mxl">
+    <div class="mhd"><span class="mtitle">Inter-Warehouse Transfer</span><button class="mx" onclick="closeM('m-transfer')">×</button></div>
+    <div class="mbody">
+      <div class="r2">
+        <div class="fg"><label class="fl">From Warehouse *</label><select class="inp sel" id="tr-from"><option value="">Select…</option></select></div>
+        <div class="fg"><label class="fl">To Warehouse *</label><select class="inp sel" id="tr-to"><option value="">Select…</option></select></div>
+      </div>
+      <div class="fg"><label class="fl">Remarks</label><input class="inp" id="tr-rem" placeholder="Reason for transfer"></div>
+      <div class="sec">Items to Transfer</div>
+      <table class="ltbl">
+        <thead><tr><th style="min-width:200px">Item *</th><th style="min-width:80px">UOM</th><th style="width:100px">Available</th><th style="width:100px">Qty *</th><th>Remarks</th><th style="width:28px"></th></tr></thead>
+        <tbody id="tr-lines"></tbody>
+      </table>
+      <button class="addl" onclick="addTransferLine()"><i class="fa-solid fa-plus"></i> Add Item</button>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-transfer')">Cancel</button>
+      <button class="btn btn-secondary" onclick="saveTransfer(false)">Save Draft</button>
+      <button class="btn btn-success" onclick="saveTransfer(true)"><i class="fa-solid fa-check-double"></i> Transfer Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Stock Adjustment Modal -->
+<div class="ov" id="m-adjust">
+  <div class="modal mxl">
+    <div class="mhd"><span class="mtitle">Stock Adjustment</span><button class="mx" onclick="closeM('m-adjust')">×</button></div>
+    <div class="mbody">
+      <div style="background:#FEF3C7;border-radius:var(--r);padding:10px 14px;font-size:12px;color:#92400E;margin-bottom:14px">
+        <i class="fa-solid fa-triangle-exclamation"></i> Adjustments are posted immediately and cannot be reversed. Use only for verified physical count discrepancies.
+      </div>
+      <div class="fg"><label class="fl">Reason *</label><input class="inp" id="adj-reason" placeholder="e.g. Physical stock verification — FY 2025-26"></div>
+      <div class="fg"><label class="fl">Remarks</label><textarea class="txa" id="adj-rem" rows="2"></textarea></div>
+      <div class="sec">Adjustment Lines</div>
+      <table class="ltbl">
+        <thead><tr><th style="min-width:190px">Item *</th><th style="min-width:130px">Warehouse *</th><th style="width:80px">UOM</th><th style="width:90px">Type *</th><th style="width:90px">Qty *</th><th>Remarks</th><th style="width:28px"></th></tr></thead>
+        <tbody id="adj-lines"></tbody>
+      </table>
+      <button class="addl" onclick="addAdjustLine()"><i class="fa-solid fa-plus"></i> Add Line</button>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-adjust')">Cancel</button>
+      <button class="btn btn-danger" onclick="saveAdjustment()"><i class="fa-solid fa-check-double"></i> Post Adjustment</button>
+    </div>
+  </div>
+</div>
 
 <!-- New SIV Modal -->
 <div class="ov" id="m-siv">
@@ -1078,6 +1159,7 @@ function initApp(){
   $('wsname').textContent=isSA?'Okie Dokie Solutions':(me.instance?.name||tid||'Institution');
   $('wsrole').textContent=roleLabel(me.role);
   buildNav(me.role);
+  applyRoleUI(me.role);
   navTo(isSA?'pg-instances':'pg-dashboard');
 }
 
@@ -1093,7 +1175,18 @@ function buildNav(role){
     h+=grp('Purchase')+nav('pg-prs','fa-file-circle-plus','Requisitions')+nav('pg-pos','fa-cart-shopping','Purchase Orders')+nav('pg-grns','fa-truck-ramp-box','GRN');
     if(canWrite) h+=grp('Masters')+nav('pg-items','fa-cubes','Items')+nav('pg-vendors','fa-handshake','Vendors')+nav('pg-categories','fa-tags','Categories')+nav('pg-uoms','fa-ruler','UOM')+nav('pg-warehouses','fa-warehouse','Warehouses')+nav('pg-departments','fa-sitemap','Departments');
     if(isAdmin) h+=grp('Admin')+nav('pg-users','fa-users','Users');
-    if(canWrite) h+=grp('Stock')+nav('pg-stock-summary','fa-chart-bar','Stock Summary')+nav('pg-sivs','fa-boxes-stacked','Stock Indents')+nav('pg-stock-returns','fa-rotate-left','Returns')+nav('pg-stock-ledger','fa-scroll','Ledger')+nav('pg-low-stock','fa-triangle-exclamation','Low Stock');
+    if(canWrite){
+      h+=grp('Stock');
+      h+=nav('pg-stock-summary','fa-chart-bar','Stock Summary');
+      h+=nav('pg-sivs','fa-boxes-stacked','Stock Indents');
+      h+=nav('pg-stock-returns','fa-rotate-left','Returns');
+      h+=nav('pg-stock-transfer','fa-right-left','Transfers');
+      h+=nav('pg-stock-ledger','fa-scroll','Ledger');
+      h+=nav('pg-low-stock','fa-triangle-exclamation','Low Stock');
+      if(isAdmin) h+=nav('pg-stock-adjust','fa-sliders','Adjustments');
+    } else if(['hod','dept_staff'].includes(role)){
+      h+=grp('Stock')+nav('pg-sivs','fa-boxes-stacked','Stock Indents');
+    }
   }
   $('sidenav').innerHTML=h;
 }
@@ -1499,7 +1592,7 @@ async function loadPRs(){
         ${pr.status==='pending'?`<button class="btn btn-sm btn-success" onclick="actOn('pr','${pr._id}','approve')"><i class="fa-solid fa-check"></i></button><button class="btn btn-sm btn-danger" onclick="actOn('pr','${pr._id}','reject')"><i class="fa-solid fa-xmark"></i></button>`:''}
       </td>
     </tr>`).join(''):`<tr><td colspan="8"><div class="empty"><div class="ei"><i class="fa-solid fa-file-invoice"></i></div><div class="et">No requisitions</div><div class="es">Raise a PR to request items</div><button class="btn btn-primary" onclick="openPRModal()">New PR</button></div></td></tr>`;
-  }catch(e){toast(e.message,'err');}
+  }catch(e){toast(e.message,'err');const ptb=$('prstb');if(ptb)ptb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="et">Failed to load PRs</div><div class="es">${e.message}</div></div></td></tr>`;}
 }
 
 async function openPRModal(){
@@ -1567,7 +1660,7 @@ async function loadPOs(){
   let url='/purchase/pos?limit=50';const sf=selV('posf');if(sf)url+=`&status=${sf}`;
   try{
     const d=await api('GET',url);const pos=d.data||[];
-    const gpo=$('grnpo');if(gpo)gpo.innerHTML='<option value="">Select PO…</option>'+pos.filter(p=>['confirmed','sent','partial'].includes(p.status)).map(p=>`<option value="${p._id}">${p.poNumber} — ${p.vendorId?.name||'?'}</option>`).join('');
+    // GRN PO dropdown is populated separately by populateGRNPODropdown()
     tb.innerHTML=pos.length?pos.map(po=>`<tr>
       <td class="tdm">${po.poNumber}</td>
       <td>${po.vendorId?.name||'—'}</td>
@@ -1581,7 +1674,7 @@ async function loadPOs(){
         ${po.approvalStatus==='approved'&&po.status==='confirmed'?`<button class="btn btn-sm btn-secondary" onclick="sendPO('${po._id}','${po.poNumber}')">Send to Vendor</button>`:''}
       </td>
     </tr>`).join(''):`<tr><td colspan="8"><div class="empty"><div class="ei"><i class="fa-solid fa-cart-shopping"></i></div><div class="et">No purchase orders</div><button class="btn btn-primary" onclick="openPOModal()">Create PO</button></div></td></tr>`;
-  }catch(e){toast(e.message,'err');}
+  }catch(e){toast(e.message,'err');const ptb2=$('postb');if(ptb2)ptb2.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="et">Failed to load POs</div><div class="es">${e.message}</div></div></td></tr>`;}
 }
 
 async function openPOModal(){await prefetch();fillSelects();$('polines').innerHTML='';addPOLine();openM('m-po');}
@@ -1657,13 +1750,22 @@ async function loadGRNs(){
       <td class="tda">
         ${g.status==='draft'?`<button class="btn btn-sm btn-success" onclick="postGRN('${g._id}','${g.grnNumber}')"><i class="fa-solid fa-check-double"></i> Post</button>`:''}
         ${g.hasRateVariance?`<span class="bdg b-pending" style="font-size:10px">Rate Var</span>`:''}
+        <button class="btn btn-sm btn-ghost btn-icon" onclick="printGRN('${g._id}')" title="Print GRN"><i class="fa-solid fa-print"></i></button>
       </td>
     </tr>`).join(''):`<tr><td colspan="8"><div class="empty"><div class="ei"><i class="fa-solid fa-truck-ramp-box"></i></div><div class="et">No GRNs</div><div class="es">Record goods received against a PO</div><button class="btn btn-primary" onclick="openGRNModal()">New GRN</button></div></td></tr>`;
-  }catch(e){toast(e.message,'err');}
+  }catch(e){toast(e.message,'err');const gtb=$('grnstb');if(gtb)gtb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="et">Failed to load GRNs</div><div class="es">${e.message}</div></div></td></tr>`;}
 }
 
+async function populateGRNPODropdown(){
+  try{
+    const d=await api('GET','/purchase/pos?limit=100');
+    const pos=(d.data||[]).filter(p=>['confirmed','sent','partial'].includes(p.status));
+    const gpo=$('grnpo');
+    if(gpo) gpo.innerHTML='<option value="">Select PO…</option>'+pos.map(p=>`<option value="${p._id}">${p.poNumber} — ${p.vendorId?.name||'?'}</option>`).join('');
+  }catch(e){toast('Could not load POs: '+e.message,'err');}
+}
 async function openGRNModal(){
-  await loadPOs();
+  await populateGRNPODropdown();
   $('grnlines').innerHTML='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Select a PO above to load items</td></tr>';
   ['grnino','grnveh','grndc','grnrem'].forEach(id=>sv(id,''));sv('grnidate','');sv('grnpo','');
   openM('m-grn');
@@ -1721,20 +1823,24 @@ async function postGRN(id,num){
 
 // ── extend pgTitles ──────────────────────
 Object.assign(pgTitles, {
-  'pg-stock-summary': ['Stock Summary', 'Current stock levels across warehouses'],
-  'pg-stock-ledger':  ['Stock Ledger', 'Full movement register with running balance'],
-  'pg-sivs':          ['Stock Indents', 'Issue vouchers — SIV'],
-  'pg-stock-returns': ['Stock Returns', 'Items returned from departments'],
-  'pg-low-stock':     ['Low Stock Alerts', 'Items below reorder level'],
+  'pg-stock-summary':  ['Stock Summary',  'Current stock levels across warehouses'],
+  'pg-stock-ledger':   ['Stock Ledger',   'Full movement register with running balance'],
+  'pg-sivs':           ['Stock Indents',  'Issue vouchers — SIV'],
+  'pg-stock-returns':  ['Stock Returns',  'Items returned from departments'],
+  'pg-low-stock':      ['Low Stock Alerts','Items below reorder level'],
+  'pg-stock-transfer': ['Inter-Warehouse Transfer','Move stock between storage locations'],
+  'pg-stock-adjust':   ['Stock Adjustments','Surplus / shortage corrections'],
 });
 
 // ── extend pgLoaders ─────────────────────
 Object.assign(pgLoaders, {
-  'pg-stock-summary': loadStockSummary,
-  'pg-stock-ledger':  setupLedgerPage,
-  'pg-sivs':          loadSIVs,
-  'pg-stock-returns': loadReturns,
-  'pg-low-stock':     loadLowStock,
+  'pg-stock-summary':  loadStockSummary,
+  'pg-stock-ledger':   setupLedgerPage,
+  'pg-sivs':           loadSIVs,
+  'pg-stock-returns':  loadReturns,
+  'pg-low-stock':      loadLowStock,
+  'pg-stock-transfer': loadTransfers,
+  'pg-stock-adjust':   loadAdjustments,
 });
 
 // Stock nav merged into buildNav above
@@ -1776,7 +1882,7 @@ async function loadStockSummary() {
     $('sk-zero').textContent = zeroStock;
 
     filterSummary();
-  } catch (e) { toast(e.message, 'err'); }
+  } catch (e) { toast(e.message, 'err'); $('ss-tbody').innerHTML=`<tr><td colspan="9"><div class="empty"><div class="et">Failed to load stock summary</div><div class="es">${e.message}</div></div></td></tr>`; }
 }
 
 function filterSummary() {
@@ -1898,9 +2004,10 @@ async function loadSIVs() {
         ${siv.status === 'pending' ? `<button class="btn btn-sm btn-success" onclick="actOn('siv','${siv._id}','approve')"><i class="fa-solid fa-check"></i></button><button class="btn btn-sm btn-danger" onclick="actOn('siv','${siv._id}','reject')"><i class="fa-solid fa-xmark"></i></button>` : ''}
         ${siv.status === 'approved' && !siv.issuedAt ? `<button class="btn btn-sm btn-success" onclick="openIssueModal('${siv._id}')"><i class="fa-solid fa-boxes-stacked"></i> Issue</button>` : ''}
         ${siv.status === 'approved' && siv.issuedAt ? `<span class="bdg b-active" style="font-size:10px">Issued</span>` : ''}
+        <button class="btn btn-sm btn-ghost btn-icon" onclick="printSIV('${siv._id}')" title="Print SIV"><i class="fa-solid fa-print"></i></button>
       </td>
     </tr>`).join('') : `<tr><td colspan="8"><div class="empty"><div class="ei"><i class="fa-solid fa-boxes-stacked"></i></div><div class="et">No stock indents</div><div class="es">Raise a stock indent to request items from the store</div><button class="btn btn-primary" onclick="openSIVModal()">New Indent</button></div></td></tr>`;
-  } catch (e) { toast(e.message, 'err'); }
+  } catch (e) { toast(e.message, 'err'); const stb=$('siv-tbody');if(stb)stb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="et">Failed to load indents</div><div class="es">${e.message}</div></div></td></tr>`; }
 }
 
 async function openSIVModal() {
@@ -2358,6 +2465,308 @@ async function seedDefaultUOMs(){
   }
   toast(`Seeded ${created} UOMs (${skipped} already existed)`);
   loadUOMs();
+}
+
+// ══════════════════════════════════════════════════════
+//  ROLE-BASED UI — hide/show action buttons by role
+// ══════════════════════════════════════════════════════
+function applyRoleUI(role){
+  const isAdmin   = ['inst_admin'].includes(role);
+  const isStore   = ['inst_admin','store_manager'].includes(role);
+  const canWrite  = ['inst_admin','purchase_officer','store_manager'].includes(role);
+  const canPO     = ['inst_admin','purchase_officer'].includes(role);
+
+  // Hide "Create PO" button for users who can't create POs
+  if(!canPO){
+    document.querySelectorAll('[onclick="openPOModal()"]').forEach(el=>el.style.display='none');
+  }
+  // Hide "New GRN" button for users who can't create GRNs
+  if(!isStore){
+    document.querySelectorAll('[onclick="openGRNModal()"]').forEach(el=>el.style.display='none');
+  }
+  // role-store-admin class elements (Transfer)
+  if(!isStore){
+    document.querySelectorAll('.role-store-admin').forEach(el=>el.style.display='none');
+  }
+  // role-admin class elements (Adjustment, Opening Stock admin buttons)
+  if(!isAdmin){
+    document.querySelectorAll('.role-admin').forEach(el=>el.style.display='none');
+    document.querySelectorAll('[onclick="openM(\'m-opening-stock\')"]').forEach(el=>el.style.display='none');
+  }
+  // Add buttons on masters pages — only for canWrite
+  if(!canWrite){
+    ['[onclick="openM(\'m-item\')"]','[onclick="openM(\'m-vendor\')"]',
+     '[onclick="openM(\'m-cat\')"]','[onclick="openM(\'m-wh\')"]',
+     '[onclick="openM(\'m-dept\')"]','[onclick="openM(\'m-uom\')"]'
+    ].forEach(sel=>{
+      document.querySelectorAll(sel).forEach(el=>el.closest('.pac')&&(el.closest('.pac').style.display='none'));
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  INTER-WAREHOUSE TRANSFERS
+// ══════════════════════════════════════════════════════
+async function loadTransfers(){
+  const tbody=$('tr-tbody'); if(!tbody)return;
+  tbody.innerHTML='<tr><td colspan="7" class="lc"><span class="spin"></span></td></tr>';
+  const sf=selV('tr-sf');
+  let url='/stock/transfers?limit=50'; if(sf) url+=`&status=${sf}`;
+  try{
+    const d=await api('GET',url); const list=d.data||[];
+    tbody.innerHTML=list.length?list.map(t=>`<tr>
+      <td class="tdm">${t.transferNumber}</td>
+      <td>${t.fromWarehouseId?.name||'—'} <span style="font-size:10px;color:var(--muted)">(${t.fromWarehouseId?.code||''})</span></td>
+      <td>${t.toWarehouseId?.name||'—'} <span style="font-size:10px;color:var(--muted)">(${t.toWarehouseId?.code||''})</span></td>
+      <td class="tdd">${t.lines?.length||0} item${t.lines?.length!==1?'s':''}</td>
+      <td>${bdg(t.status)}</td>
+      <td class="tdd">${fmtDT(t.createdAt)}</td>
+      <td class="tda">
+        ${t.status==='draft'?`<button class="btn btn-sm btn-success" onclick="postTransfer('${t._id}','${t.transferNumber}')"><i class="fa-solid fa-check-double"></i> Post</button>`:''}
+      </td>
+    </tr>`).join(''):`<tr><td colspan="7"><div class="empty"><div class="ei"><i class="fa-solid fa-right-left"></i></div><div class="et">No transfers</div><div class="es">Move stock between warehouses using Transfer</div><button class="btn btn-primary" onclick="openTransferModal()">New Transfer</button></div></td></tr>`;
+  }catch(e){ toast(e.message,'err'); tbody.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="et">Failed to load transfers</div><div class="es">${e.message}</div></div></td></tr>`; }
+}
+
+async function openTransferModal(){
+  if(_whs.length===0) await prefetch();
+  const fromEl=$('tr-from'),toEl=$('tr-to');
+  const whOpts='<option value="">Select…</option>'+_whs.map(w=>`<option value="${w._id}">${w.name} (${w.code})</option>`).join('');
+  if(fromEl) fromEl.innerHTML=whOpts;
+  if(toEl)   toEl.innerHTML=whOpts;
+  $('tr-lines').innerHTML=''; $('tr-rem').value='';
+  addTransferLine();
+  openM('m-transfer');
+}
+
+function addTransferLine(){
+  const row=document.createElement('tr');
+  row.innerHTML=`
+    <td><select class="lin tritem" style="min-width:200px"><option value="">Select item…</option>${_items.map(i=>`<option value="${i._id}" data-uom="${i.uomId?._id||i.uomId||''}">${i.itemCode} · ${i.name}</option>`).join('')}</select></td>
+    <td><select class="lin truom" style="min-width:70px"><option value="">—</option>${_uoms.map(u=>`<option value="${u._id}">${u.code}</option>`).join('')}</select></td>
+    <td><span class="travail tdd" style="font-size:12px;padding:4px">—</span></td>
+    <td><input type="number" class="lin trqty" placeholder="Qty" min="0.01" step="0.01"></td>
+    <td><input type="text" class="lin" placeholder="Remarks"></td>
+    <td><button class="rml" onclick="this.closest('tr').remove()"><i class="fa-solid fa-minus"></i></button></td>
+  `;
+  row.querySelector('.tritem').addEventListener('change', async function(){
+    const opt=this.options[this.selectedIndex]; const tr=this.closest('tr');
+    if(opt.dataset.uom) tr.querySelector('.truom').value=opt.dataset.uom;
+    const avEl=tr.querySelector('.travail'); const fromWh=selV('tr-from');
+    if(this.value && fromWh){
+      avEl.textContent='…';
+      try{ const d=await api('GET',`/stock/item-stock/${this.value}`);
+        const whS=d.data?.stockByWarehouse?.find(s=>String(s._id)===fromWh);
+        avEl.textContent=whS?whS.stock:'0';
+        avEl.style.color=(whS?.stock||0)<=0?'var(--danger)':'var(--success)';
+      }catch{ avEl.textContent='—'; }
+    }
+  });
+  if(!_items.length){
+    api('GET','/masters/items?limit=200&isActive=true').then(d=>{
+      _items=d.data||[];
+      document.querySelectorAll('.tritem').forEach(s=>{
+        s.innerHTML='<option value="">Select item…</option>'+_items.map(i=>`<option value="${i._id}" data-uom="${i.uomId?._id||i.uomId||''}">${i.itemCode} · ${i.name}</option>`).join('');
+      });
+    }).catch(()=>{});
+  }
+  $('tr-lines').appendChild(row);
+}
+
+async function saveTransfer(postNow){
+  const fromWh=selV('tr-from'), toWh=selV('tr-to');
+  if(!fromWh||!toWh){ toast('Select source and destination warehouses','err'); return; }
+  if(fromWh===toWh){ toast('Source and destination must be different','err'); return; }
+  const lines=[...$('tr-lines').querySelectorAll('tr')].map(row=>({
+    itemId:row.querySelector('.tritem')?.value,
+    uomId:row.querySelector('.truom')?.value||undefined,
+    qty:Number(row.querySelector('.trqty')?.value)||0,
+    remarks:row.querySelectorAll('.lin')[4]?.value||undefined,
+  })).filter(l=>l.itemId&&l.qty>0);
+  if(!lines.length){ toast('Add at least one item with qty','err'); return; }
+  try{
+    const t=await api('POST','/stock/transfers',{fromWarehouseId:fromWh,toWarehouseId:toWh,lines,remarks:$('tr-rem').value||undefined,postNow});
+    toast(`${t.data.transferNumber} ${postNow?'posted':'saved as draft'}`);
+    closeM('m-transfer'); loadTransfers();
+  }catch(e){ toast(e.message,'err'); }
+}
+
+async function postTransfer(id,num){
+  if(!confirm(`Post transfer ${num}? Stock will move immediately.`)) return;
+  try{ await api('POST',`/stock/transfers/${id}/post`); toast(`${num} posted — stock moved`); loadTransfers(); }
+  catch(e){ toast(e.message,'err'); }
+}
+
+// ══════════════════════════════════════════════════════
+//  STOCK ADJUSTMENTS
+// ══════════════════════════════════════════════════════
+async function loadAdjustments(){
+  const tbody=$('adj-tbody'); if(!tbody)return;
+  tbody.innerHTML='<tr><td colspan="6" class="lc"><span class="spin"></span></td></tr>';
+  try{
+    const d=await api('GET','/stock/adjustments?limit=50'); const list=d.data||[];
+    tbody.innerHTML=list.length?list.map(a=>`<tr>
+      <td class="tdm">${a.adjustmentNumber}</td>
+      <td>${a.reason}</td>
+      <td class="tdd">${a.lines?.length||0} line${a.lines?.length!==1?'s':''}</td>
+      <td class="tdd">${fmtDT(a.postedAt)}</td>
+      <td class="tdd">${a.createdBy?.name||'—'}</td>
+      <td class="tda"><button class="btn btn-sm btn-ghost btn-icon" onclick="viewAdjDetail('${a._id}')" title="View"><i class="fa-solid fa-eye"></i></button></td>
+    </tr>`).join(''):`<tr><td colspan="6"><div class="empty"><div class="ei"><i class="fa-solid fa-sliders"></i></div><div class="et">No adjustments</div><div class="es">Post adjustments for verified physical count discrepancies</div><button class="btn btn-primary" onclick="openAdjustModal()">New Adjustment</button></div></td></tr>`;
+  }catch(e){ toast(e.message,'err'); tbody.innerHTML=`<tr><td colspan="6"><div class="empty"><div class="et">Failed to load adjustments</div><div class="es">${e.message}</div></div></td></tr>`; }
+}
+
+async function openAdjustModal(){
+  if(_whs.length===0||_items.length===0) await prefetch();
+  $('adj-lines').innerHTML=''; $('adj-reason').value=''; $('adj-rem').value='';
+  addAdjustLine();
+  openM('m-adjust');
+}
+
+function addAdjustLine(){
+  const row=document.createElement('tr');
+  const whOpts=_whs.map(w=>`<option value="${w._id}">${w.name}</option>`).join('');
+  const itemOpts=_items.map(i=>`<option value="${i._id}" data-uom="${i.uomId?._id||i.uomId||''}">${i.itemCode} · ${i.name}</option>`).join('');
+  const uomOpts=_uoms.map(u=>`<option value="${u._id}">${u.code}</option>`).join('');
+  row.innerHTML=`
+    <td><select class="lin adjitem" style="min-width:190px"><option value="">Select item…</option>${itemOpts}</select></td>
+    <td><select class="lin adjwh" style="min-width:120px"><option value="">Select…</option>${whOpts}</select></td>
+    <td><select class="lin adjuom" style="min-width:70px"><option value="">—</option>${uomOpts}</select></td>
+    <td><select class="lin adjtype" style="min-width:80px"><option value="add">Add (+)</option><option value="sub">Write-off (−)</option></select></td>
+    <td><input type="number" class="lin adjqty" placeholder="Qty" min="0.01" step="0.01"></td>
+    <td><input type="text" class="lin" placeholder="Line remark"></td>
+    <td><button class="rml" onclick="this.closest('tr').remove()"><i class="fa-solid fa-minus"></i></button></td>
+  `;
+  row.querySelector('.adjitem').addEventListener('change',function(){
+    const opt=this.options[this.selectedIndex];
+    if(opt.dataset.uom) this.closest('tr').querySelector('.adjuom').value=opt.dataset.uom;
+  });
+  $('adj-lines').appendChild(row);
+}
+
+async function saveAdjustment(){
+  const reason=$('adj-reason').value.trim();
+  if(!reason){ toast('Reason is required','err'); return; }
+  const lines=[...$('adj-lines').querySelectorAll('tr')].map(row=>({
+    itemId:row.querySelector('.adjitem')?.value,
+    warehouseId:row.querySelector('.adjwh')?.value,
+    uomId:row.querySelector('.adjuom')?.value||undefined,
+    adjType:row.querySelector('.adjtype')?.value||'add',
+    qty:Number(row.querySelector('.adjqty')?.value)||0,
+    remarks:row.querySelectorAll('.lin')[5]?.value||undefined,
+  })).filter(l=>l.itemId&&l.warehouseId&&l.qty>0);
+  if(!lines.length){ toast('Add at least one valid line','err'); return; }
+  if(!confirm(`Post ${lines.length} adjustment line(s)? This cannot be undone.`)) return;
+  try{
+    const a=await api('POST','/stock/adjustments',{reason,lines,remarks:$('adj-rem').value||undefined});
+    toast(`${a.data.adjustmentNumber} posted — stock updated`);
+    closeM('m-adjust'); loadAdjustments();
+  }catch(e){ toast(e.message,'err'); }
+}
+
+async function viewAdjDetail(id){
+  try{
+    const d=await api('GET',`/stock/adjustments/${id}`); const a=d.data;
+    const lines=a.lines.map(l=>`• ${l.adjType==='add'?'[+]':'[−]'} ${l.itemId?.name||'?'} | ${l.qty} ${l.uomId?.code||''} | ${l.warehouseId?.name||'?'}${l.remarks?' — '+l.remarks:''}`).join('\n');
+    alert(`${a.adjustmentNumber}\nReason: ${a.reason}\nPosted: ${fmtDT(a.postedAt)}\n\n${lines}`);
+  }catch(e){ toast(e.message,'err'); }
+}
+
+// ══════════════════════════════════════════════════════
+//  PRINT — GRN / SIV
+// ══════════════════════════════════════════════════════
+async function printGRN(id){
+  try{
+    const d=await api('GET',`/purchase/grns/${id}`); const g=d.data;
+    const w=window.open('','_blank','width=900,height=700');
+    const rows=g.lines.map(l=>`<tr>
+      <td>${l.itemId?.itemCode||'—'}</td><td>${l.itemId?.name||'—'}</td>
+      <td style="text-align:right">${l.orderedQty}</td><td style="text-align:right">${l.receivedQty}</td>
+      <td style="text-align:right">${l.acceptedQty}</td>
+      <td style="text-align:right">₹${(l.unitRate||0).toFixed(2)}</td>
+      <td style="text-align:right">₹${((l.acceptedQty||0)*(l.unitRate||0)).toFixed(2)}</td>
+    </tr>`).join('');
+    w.document.write(`<!DOCTYPE html><html><head><title>${g.grnNumber}</title>
+    <style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}h2{margin:0}table{width:100%;border-collapse:collapse;margin-top:14px}th,td{border:1px solid #ccc;padding:6px 8px}th{background:#f5f5f5}.hdr{display:flex;justify-content:space-between;margin-bottom:20px}.info{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;margin-bottom:14px}.ib{display:flex;gap:8px}.il{color:#666}@media print{button{display:none}}</style>
+    </head><body>
+    <div class="hdr"><div><h2>GOODS RECEIPT NOTE</h2><div style="font-size:14px;font-weight:600;color:#555">${g.grnNumber}</div></div><div style="text-align:right"><div><strong>${me.instance?.name||''}</strong></div><button onclick="window.print()" style="margin-top:8px;padding:6px 14px;cursor:pointer">Print</button></div></div>
+    <div class="info">
+      <div class="ib"><span class="il">PO Number:</span><strong>${g.poId?.poNumber||'—'}</strong></div>
+      <div class="ib"><span class="il">Vendor:</span><strong>${g.vendorId?.name||'—'}</strong></div>
+      <div class="ib"><span class="il">Invoice No:</span><strong>${g.vendorInvoiceNo||'—'}</strong></div>
+      <div class="ib"><span class="il">Invoice Date:</span><strong>${g.vendorInvoiceDate?fmtD(g.vendorInvoiceDate):'—'}</strong></div>
+      <div class="ib"><span class="il">Vehicle No:</span><strong>${g.vehicleNo||'—'}</strong></div>
+      <div class="ib"><span class="il">DC No:</span><strong>${g.dcNo||'—'}</strong></div>
+      <div class="ib"><span class="il">Status:</span><strong>${g.status.toUpperCase()}</strong></div>
+      <div class="ib"><span class="il">Posted At:</span><strong>${g.postedAt?fmtDT(g.postedAt):'Not posted'}</strong></div>
+    </div>
+    <table><thead><tr><th>Code</th><th>Item</th><th style="text-align:right">Ordered</th><th style="text-align:right">Received</th><th style="text-align:right">Accepted</th><th style="text-align:right">Rate</th><th style="text-align:right">Amount</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr><td colspan="6" style="text-align:right"><strong>Grand Total</strong></td><td style="text-align:right"><strong>₹${(g.grandTotal||0).toLocaleString('en-IN',{minimumFractionDigits:2})}</strong></td></tr></tfoot>
+    </table>
+    ${g.remarks?`<div style="margin-top:14px"><strong>Remarks:</strong> ${g.remarks}</div>`:''}
+    <div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;text-align:center">
+      <div style="border-top:1px solid #000;padding-top:6px">Received By</div>
+      <div style="border-top:1px solid #000;padding-top:6px">Store Manager</div>
+      <div style="border-top:1px solid #000;padding-top:6px">Accounts</div>
+    </div>
+    </body></html>`);
+    w.document.close();
+  }catch(e){ toast(e.message,'err'); }
+}
+
+async function printSIV(id){
+  try{
+    const d=await api('GET',`/stock/sivs/${id}`); const s=d.data;
+    const w=window.open('','_blank','width=900,height=700');
+    const rows=(s.lines||[]).map(l=>`<tr>
+      <td>${l.itemId?.itemCode||'—'}</td><td>${l.itemId?.name||'—'}</td>
+      <td>${l.uomId?.code||'—'}</td>
+      <td style="text-align:right">${l.requestedQty||l.qty||0}</td>
+      <td style="text-align:right">${l.issuedQty||'—'}</td>
+      <td>${l.remarks||'—'}</td>
+    </tr>`).join('');
+    w.document.write(`<!DOCTYPE html><html><head><title>${s.sivNumber}</title>
+    <style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px}h2{margin:0}table{width:100%;border-collapse:collapse;margin-top:14px}th,td{border:1px solid #ccc;padding:6px 8px}th{background:#f5f5f5}.hdr{display:flex;justify-content:space-between;margin-bottom:20px}.info{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;margin-bottom:14px}.ib{display:flex;gap:8px}.il{color:#666}@media print{button{display:none}}</style>
+    </head><body>
+    <div class="hdr"><div><h2>STOCK ISSUE VOUCHER</h2><div style="font-size:14px;font-weight:600;color:#555">${s.sivNumber}</div></div><div style="text-align:right"><div><strong>${me.instance?.name||''}</strong></div><button onclick="window.print()" style="margin-top:8px;padding:6px 14px;cursor:pointer">Print</button></div></div>
+    <div class="info">
+      <div class="ib"><span class="il">Department:</span><strong>${s.departmentId?.name||'—'}</strong></div>
+      <div class="ib"><span class="il">Warehouse:</span><strong>${s.warehouseId?.name||'—'}</strong></div>
+      <div class="ib"><span class="il">Purpose:</span><strong>${s.purpose||'—'}</strong></div>
+      <div class="ib"><span class="il">Status:</span><strong>${s.status.toUpperCase()}</strong></div>
+      <div class="ib"><span class="il">Raised By:</span><strong>${s.createdBy?.name||'—'}</strong></div>
+      <div class="ib"><span class="il">Issued At:</span><strong>${s.issuedAt?fmtDT(s.issuedAt):'Not yet issued'}</strong></div>
+    </div>
+    <table><thead><tr><th>Code</th><th>Item</th><th>UOM</th><th style="text-align:right">Requested</th><th style="text-align:right">Issued</th><th>Remarks</th></tr></thead>
+    <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;text-align:center">
+      <div style="border-top:1px solid #000;padding-top:6px">Requested By</div>
+      <div style="border-top:1px solid #000;padding-top:6px">HOD Approval</div>
+      <div style="border-top:1px solid #000;padding-top:6px">Issued By (Store)</div>
+    </div>
+    </body></html>`);
+    w.document.close();
+  }catch(e){ toast(e.message,'err'); }
+}
+
+// ══════════════════════════════════════════════════════
+//  CSV EXPORT — Stock Summary
+// ══════════════════════════════════════════════════════
+function exportStockCSV(){
+  if(!_summaryData||!_summaryData.length){ toast('No data to export','err'); return; }
+  const hdr='Item Code,Item Name,Category,Warehouse,Stock,Reorder Qty,Stock Value,Below Reorder';
+  const rows=_summaryData.map(r=>[
+    r.itemCode,`"${r.itemName||''}"`,`"${r.categoryName||''}"`,`"${r.warehouseName||''}"`,
+    r.stock,r.reorderQty||0,r.stockValue?.toFixed(2)||0,r.isBelowReorder?'Yes':'No'
+  ].join(','));
+  const csv=[hdr,...rows].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);
+  a.download=`stock-summary-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('CSV downloaded');
 }
 
 // ── AUTO LOGIN ────────────────────────────────────────
