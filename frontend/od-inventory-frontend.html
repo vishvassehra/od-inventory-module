@@ -994,11 +994,12 @@ tbody tr:hover td{background:#FAFBFD}
 
 <div class="tw" id="toasts"></div>
 <script>
-const BASE='https://od-inventory-module.onrender.com/api/v1';
+const BASE='https://od-inventory-module-1.onrender.com/api/v1';
 let tok=localStorage.getItem('od_tok')||'';
 let me=JSON.parse(localStorage.getItem('od_me')||'null');
 let tid=localStorage.getItem('od_tid')||'';
 let pendingAct=null;
+let _editUserId=null;
 let _cats=[],_uoms=[],_whs=[],_depts=[],_vendors=[],_items=[],_instances=[];
 
 const api=async(m,p,b)=>{
@@ -2222,8 +2223,6 @@ async function loadUsers() {
     </tr>`).join('') : `<tr><td colspan="6"><div class="empty"><div class="ei"><i class="fa-solid fa-users"></i></div><div class="et">No users yet</div><div class="es">Add users to give them access to this institution</div><button class="btn btn-primary" onclick="openM('m-user')">Add User</button></div></td></tr>`;
   } catch(e) { toast(e.message, 'err'); }
 }
-
-let _editUserId = null;
 
 async function editUser(id) {
   try {
