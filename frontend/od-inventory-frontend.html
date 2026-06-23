@@ -2438,6 +2438,13 @@ function defaultOSDate() {
 
 async function openOpeningStockModal() {
   await prefetch();
+  // prefetch does not include items — load them explicitly before building lines
+  if (!_items.length) {
+    try {
+      const d = await api('GET', '/masters/items?limit=200&isActive=true');
+      _items = d.data || [];
+    } catch(e) { toast('Could not load items: ' + e.message, 'err'); return; }
+  }
   $('os-lines').innerHTML = '';
   const date = defaultOSDate();
   sv('os-date', date);
@@ -2508,6 +2515,16 @@ function addOSLine() {
     this.style.borderColor = (this.value && Number(this.value) > 0) ? '' : 'var(--warning)';
   });
   $('os-lines').appendChild(row);
+  // Lazy-load fallback: if _items was empty when modal opened, populate all dropdowns once loaded
+  if (!_items.length) {
+    api('GET', '/masters/items?limit=200&isActive=true').then(d => {
+      _items = d.data || [];
+      document.querySelectorAll('#os-lines .ositem').forEach(sel => {
+        sel.innerHTML = '<option value="">Select item…</option>' +
+          _items.map(i => `<option value="${i._id}" data-uom="${i.uomId?._id || i.uomId || ''}">${i.itemCode} · ${i.name}</option>`).join('');
+      });
+    }).catch(e => toast('Could not load items: ' + e.message, 'err'));
+  }
 }
 
 async function saveOpeningStock() {
