@@ -393,9 +393,9 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="page hidden" id="pg-warehouses">
         <div class="ph">
           <div><div class="pt">Warehouses</div><div class="ps">Storage locations and store rooms</div></div>
-          <div class="pac"><button class="btn btn-primary" onclick="openM('m-wh')"><i class="fa-solid fa-plus"></i> Add Warehouse</button></div>
+          <div class="pac"><button class="btn btn-primary" onclick="openWHModal()"><i class="fa-solid fa-plus"></i> Add Warehouse</button></div>
         </div>
-        <div class="card"><div class="tw2"><table><thead><tr><th>Code</th><th>Name</th><th>Location</th><th>Type</th><th>Status</th><th></th></tr></thead><tbody id="whtb"><tr><td colspan="6" class="lc"><span class="spin"></span></td></tr></tbody></table></div></div>
+        <div class="card"><div class="tw2"><table><thead><tr><th>Code</th><th>Name</th><th>Location</th><th>Type</th><th>Incharge</th><th>Status</th><th></th></tr></thead><tbody id="whtb"><tr><td colspan="7" class="lc"><span class="spin"></span></td></tr></tbody></table></div></div>
       </div>
 
       <!-- DEPARTMENTS -->
@@ -910,21 +910,35 @@ tbody tr:hover td{background:#FAFBFD}
 </div>
 
 <div class="ov" id="m-wh">
-  <div class="modal msm">
-    <div class="mhd"><span class="mtitle">Add Warehouse</span><button class="mx" onclick="closeM('m-wh')">×</button></div>
+  <div class="modal mmd">
+    <div class="mhd"><span class="mtitle" id="wh-mt">Add Warehouse</span><button class="mx" onclick="closeM('m-wh')">×</button></div>
     <div class="mbody">
+      <input type="hidden" id="wheid">
       <div class="r2">
-        <div class="fg"><label class="fl">Code *</label><input class="inp" id="whcode" placeholder="MAIN"></div>
+        <div class="fg"><label class="fl">Code *</label><input class="inp" id="whcode" placeholder="MAIN" style="text-transform:uppercase"></div>
         <div class="fg"><label class="fl">Name *</label><input class="inp" id="whname" placeholder="Main Store"></div>
       </div>
       <div class="r2">
-        <div class="fg"><label class="fl">Type</label><select class="inp sel" id="whtype"><option value="main">Main</option><option value="sub">Sub</option><option value="transit">Transit</option></select></div>
-        <div class="fg"><label class="fl">Location</label><input class="inp" id="whloc" placeholder="Building / Block"></div>
+        <div class="fg"><label class="fl">Type</label>
+          <select class="inp sel" id="whtype">
+            <option value="main">Main Store</option>
+            <option value="sub">Department / Sub Store</option>
+            <option value="transit">Transit</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Physical Location</label><input class="inp" id="whloc" placeholder="Building / Block / Room"></div>
+      </div>
+      <div class="fg">
+        <label class="fl">Incharge <span style="font-weight:400;color:var(--muted)">(Store Manager or HOD responsible for this location)</span></label>
+        <select class="inp sel" id="wh-incharge">
+          <option value="">Select user…</option>
+        </select>
+        <div class="fh">The assigned user can approve stock requests from this warehouse.</div>
       </div>
     </div>
     <div class="mft">
       <button class="btn btn-secondary" onclick="closeM('m-wh')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveWH()">Save Warehouse</button>
+      <button class="btn btn-primary" onclick="saveWH()"><i class="fa-solid fa-floppy-disk"></i> Save Warehouse</button>
     </div>
   </div>
 </div>
@@ -1533,25 +1547,92 @@ async function saveCat(){
 }
 
 // ── WAREHOUSES ────────────────────────────────────────
+// ── cached users list for incharge dropdown ──────────────
+let _users = [];
+
+async function fetchUsersForDropdown(){
+  if(_users.length) return;
+  try{
+    const d=await api('GET','/users?limit=200&isActive=true');
+    _users=d.data||[];
+  }catch(e){ console.error('Could not load users for incharge dropdown',e.message); }
+}
+
+function buildInchargeOptions(selectedId=''){
+  const opts=_users.map(u=>`<option value="${u._id}" ${u._id===selectedId?'selected':''}>${u.name} (${roleLabel(u.role)})</option>`).join('');
+  return `<option value="">None assigned</option>${opts}`;
+}
+
+const whTypeLabel={main:'Main Store',sub:'Dept / Sub Store',transit:'Transit'};
+
 async function loadWHs(){
   const tb=$('whtb');if(!tb)return;
-  tb.innerHTML='<tr><td colspan="6" class="lc"><span class="spin"></span></td></tr>';
+  tb.innerHTML='<tr><td colspan="7" class="lc"><span class="spin"></span></td></tr>';
   try{
     const d=await api('GET','/masters/warehouses?limit=100');_whs=d.data||[];
     tb.innerHTML=_whs.length?_whs.map(w=>`<tr>
-      <td class="tdm">${w.code}</td><td><strong>${w.name}</strong></td>
-      <td class="tdd">${w.location||'—'}</td><td>${bdg('draft',w.type)}</td>
+      <td class="tdm">${w.code}</td>
+      <td><strong>${w.name}</strong>${w.location?`<div class="tdd" style="font-size:11px">${w.location}</div>`:''}</td>
+      <td class="tdd">${w.location||'—'}</td>
+      <td>${bdg('draft',whTypeLabel[w.type]||w.type)}</td>
+      <td class="tdd">${w.inchargeUserId?.name||'<span style="color:var(--warning)">Not assigned</span>'}</td>
       <td>${bdg(w.isActive?'active':'inactive')}</td>
-      <td class="tda"><button class="btn btn-sm btn-ghost" onclick="toggleM('/masters/warehouses/${w._id}/toggle-active','${w.name}',loadWHs)">${w.isActive?'Deactivate':'Activate'}</button></td>
-    </tr>`).join(''):`<tr><td colspan="6"><div class="empty"><div class="ei"><i class="fa-solid fa-warehouse"></i></div><div class="et">No warehouses</div><button class="btn btn-primary" onclick="openM('m-wh')">Add Warehouse</button></div></td></tr>`;
+      <td class="tda">
+        <button class="btn btn-sm btn-secondary btn-icon" onclick="editWH('${w._id}')" title="Edit"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-sm btn-ghost" onclick="toggleM('/masters/warehouses/${w._id}/toggle-active','${w.name}',loadWHs)">${w.isActive?'Deactivate':'Activate'}</button>
+      </td>
+    </tr>`).join(''):`<tr><td colspan="7"><div class="empty"><div class="ei"><i class="fa-solid fa-warehouse"></i></div><div class="et">No warehouses</div><div class="es">Add your central stores and department stores</div><button class="btn btn-primary" onclick="openWHModal()">Add Warehouse</button></div></td></tr>`;
+  }catch(e){toast(e.message,'err');tb.innerHTML=`<tr><td colspan="7"><div class="empty"><div class="et">Failed to load warehouses</div><div class="es">${e.message}</div></div></td></tr>`;}
+}
+
+async function openWHModal(){
+  await fetchUsersForDropdown();
+  sv('wheid','');sv('whcode','');sv('whname','');sv('whloc','');
+  sv('whtype','main');
+  $('wh-incharge').innerHTML=buildInchargeOptions();
+  $('wh-mt').textContent='Add Warehouse';
+  openM('m-wh');
+}
+
+async function editWH(id){
+  await fetchUsersForDropdown();
+  try{
+    const d=await api('GET',`/masters/warehouses/${id}`);const w=d.data;
+    sv('wheid',id);
+    sv('whcode',w.code);
+    sv('whname',w.name);
+    sv('whloc',w.location||'');
+    sv('whtype',w.type||'main');
+    $('wh-incharge').innerHTML=buildInchargeOptions(w.inchargeUserId?._id||w.inchargeUserId||'');
+    $('wh-mt').textContent='Edit Warehouse';
+    openM('m-wh');
   }catch(e){toast(e.message,'err');}
 }
 
 async function saveWH(){
-  const code=gv('whcode'),name=gv('whname');
+  const id=gv('wheid');
+  const code=gv('whcode').toUpperCase();
+  const name=gv('whname');
   if(!code||!name){toast('Code and name required','err');return;}
-  try{await api('POST','/masters/warehouses',{code,name,type:selV('whtype'),location:gv('whloc')||undefined});toast('Warehouse created');closeM('m-wh');sv('whcode','');sv('whname','');sv('whloc','');loadWHs();}
-  catch(e){toast(e.message,'err');}
+  const body={
+    code,name,
+    type:selV('whtype')||'main',
+    location:gv('whloc')||undefined,
+    inchargeUserId:selV('wh-incharge')||null,
+  };
+  try{
+    if(id){
+      await api('PATCH',`/masters/warehouses/${id}`,body);
+      toast('Warehouse updated');
+    }else{
+      await api('POST','/masters/warehouses',body);
+      toast('Warehouse created');
+    }
+    closeM('m-wh');
+    sv('wheid','');sv('whcode','');sv('whname','');sv('whloc','');
+    $('wh-mt').textContent='Add Warehouse';
+    loadWHs();
+  }catch(e){toast(e.message,'err');}
 }
 
 // ── DEPARTMENTS ───────────────────────────────────────
@@ -2510,7 +2591,7 @@ function applyRoleUI(role){
   // Add buttons on masters pages — only for canWrite
   if(!canWrite){
     ['[onclick="openM(\'m-item\')"]','[onclick="openM(\'m-vendor\')"]',
-     '[onclick="openM(\'m-cat\')"]','[onclick="openM(\'m-wh\')"]',
+     '[onclick="openM(\'m-cat\')"]','[onclick="openWHModal()"]',
      '[onclick="openM(\'m-dept\')"]','[onclick="openM(\'m-uom\')"]'
     ].forEach(sel=>{
       document.querySelectorAll(sel).forEach(el=>el.closest('.pac')&&(el.closest('.pac').style.display='none'));
