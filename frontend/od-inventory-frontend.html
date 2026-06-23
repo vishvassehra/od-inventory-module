@@ -646,11 +646,70 @@ tbody tr:hover td{background:#FAFBFD}
         </div>
       </div>
 
+      <!-- OPENING STOCK -->
+      <div class="page hidden" id="pg-opening-stock">
+        <div class="ph">
+          <div><div class="pt">Opening Stock</div><div class="ps">Posted opening stock entries by financial year</div></div>
+          <div class="pac role-admin">
+            <button class="btn btn-primary" onclick="openOpeningStockModal()">
+              <i class="fa-solid fa-plus"></i> Post Opening Stock
+            </button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="tw2"><table>
+            <thead><tr>
+              <th>Reference No.</th>
+              <th>Financial Year</th>
+              <th>As-of Date</th>
+              <th style="text-align:right">Items</th>
+              <th style="text-align:right">Total Value</th>
+              <th>Posted At</th>
+              <th>Posted By</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="ose-tbody"><tr><td colspan="8" class="lc"><span class="spin"></span></td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
     </div><!-- /.ct -->
   </div><!-- /.mn -->
 </div><!-- /#av -->
 
 <!-- ── 1D MODALS ── -->
+
+<!-- Opening Stock Detail Modal -->
+<div class="ov" id="m-ose-detail">
+  <div class="modal mxl">
+    <div class="mhd">
+      <div>
+        <span class="mtitle" id="ose-detail-title">Opening Stock Detail</span>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px" id="ose-detail-sub"></div>
+      </div>
+      <button class="mx" onclick="closeM('m-ose-detail')">×</button>
+    </div>
+    <div class="mbody">
+      <div id="ose-detail-meta" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;background:var(--surface);border-radius:var(--r);padding:14px;margin-bottom:18px;font-size:13px"></div>
+      <div class="tw2"><table>
+        <thead><tr>
+          <th>Item Code</th>
+          <th>Item Name</th>
+          <th>Warehouse</th>
+          <th>UOM</th>
+          <th style="text-align:right">Qty</th>
+          <th style="text-align:right">Unit Rate ₹</th>
+          <th style="text-align:right">Value ₹</th>
+        </tr></thead>
+        <tbody id="ose-detail-lines"></tbody>
+        <tfoot id="ose-detail-foot"></tfoot>
+      </table></div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-ose-detail')">Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- Stock Transfer Modal -->
 <div class="ov" id="m-transfer">
@@ -1224,6 +1283,7 @@ function buildNav(role){
       h+=nav('pg-stock-ledger','fa-scroll','Ledger');
       h+=nav('pg-low-stock','fa-triangle-exclamation','Low Stock');
       if(isAdmin) h+=nav('pg-stock-adjust','fa-sliders','Adjustments');
+      if(isAdmin) h+=nav('pg-opening-stock','fa-database','Opening Stock');
     } else if(['hod','dept_staff'].includes(role)){
       h+=grp('Stock')+nav('pg-sivs','fa-boxes-stacked','Stock Indents');
     }
@@ -1937,6 +1997,7 @@ Object.assign(pgTitles, {
   'pg-low-stock':      ['Low Stock Alerts','Items below reorder level'],
   'pg-stock-transfer': ['Inter-Warehouse Transfer','Move stock between storage locations'],
   'pg-stock-adjust':   ['Stock Adjustments','Surplus / shortage corrections'],
+  'pg-opening-stock':  ['Opening Stock',  'Posted opening stock entries by financial year'],
 });
 
 // ── extend pgLoaders ─────────────────────
@@ -1948,6 +2009,7 @@ Object.assign(pgLoaders, {
   'pg-low-stock':      loadLowStock,
   'pg-stock-transfer': loadTransfers,
   'pg-stock-adjust':   loadAdjustments,
+  'pg-opening-stock':  loadOpeningStockPage,
 });
 
 // Stock nav merged into buildNav above
@@ -2498,6 +2560,9 @@ This CANNOT be undone. FY ${fy} will be locked.`)) return;
     toast(d.message || 'Opening stock posted');
     closeM('m-opening-stock');
     loadStockSummary();
+    // Refresh opening stock list page if currently visible
+    const activePg = document.querySelector('.page:not(.hidden)');
+    if (activePg?.id === 'pg-opening-stock') loadOpeningStockPage();
   } catch (e) {
     if (e.message?.includes('FY') && e.message?.includes('locked')) {
       showOSFYBanner({ locked: true, error: e.message });
@@ -2894,6 +2959,107 @@ async function viewAdjDetail(id){
 // ══════════════════════════════════════════════════════
 //  PRINT — GRN / SIV
 // ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+//  OPENING STOCK LIST PAGE
+// ══════════════════════════════════════════════════════
+async function loadOpeningStockPage() {
+  const tbody = $('ose-tbody'); if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" class="lc"><span class="spin"></span></td></tr>';
+  try {
+    const d = await api('GET', '/stock/opening');
+    const list = d.data || [];
+
+    tbody.innerHTML = list.length ? list.map(ose => {
+      // Compute total value from lines
+      const totalValue = (ose.lines || []).reduce((sum, l) => sum + (l.qty * (l.unitRate || 0)), 0);
+      const fyDisplay  = `FY ${ose.fy}`;
+
+      return `<tr>
+        <td class="tdm">${ose.referenceNo}</td>
+        <td><span class="bdg b-school">${fyDisplay}</span></td>
+        <td class="tdd">${fmtD(ose.asOfDate)}</td>
+        <td class="tdm" style="text-align:right">${ose.lines?.length || 0}</td>
+        <td class="tdm" style="text-align:right">${inr(totalValue)}</td>
+        <td class="tdd">${fmtDT(ose.postedAt)}</td>
+        <td class="tdd">${ose.postedBy?.name || ose.createdBy?.name || '—'}</td>
+        <td class="tda">
+          <button class="btn btn-sm btn-secondary" onclick="viewOSEDetail('${ose._id}')">
+            <i class="fa-solid fa-eye"></i> View Lines
+          </button>
+        </td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="8"><div class="empty">
+      <div class="ei"><i class="fa-solid fa-database"></i></div>
+      <div class="et">No opening stock posted yet</div>
+      <div class="es">Post opening stock once per financial year to set the starting balances for all warehouses.</div>
+      <button class="btn btn-primary" onclick="openOpeningStockModal()">
+        <i class="fa-solid fa-plus"></i> Post Opening Stock
+      </button>
+    </div></td></tr>`;
+  } catch(e) {
+    toast(e.message, 'err');
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="et">Failed to load</div><div class="es">${e.message}</div></div></td></tr>`;
+  }
+}
+
+async function viewOSEDetail(id) {
+  try {
+    const d    = await api('GET', '/stock/opening');
+    const ose  = (d.data || []).find(o => o._id === id);
+    if (!ose) { toast('Entry not found', 'err'); return; }
+
+    $('ose-detail-title').textContent = ose.referenceNo;
+    $('ose-detail-sub').textContent   = `Financial Year ${ose.fy} · As-of ${fmtD(ose.asOfDate)}`;
+
+    // Meta strip
+    const totalValue = (ose.lines || []).reduce((sum, l) => sum + (l.qty * (l.unitRate || 0)), 0);
+    $('ose-detail-meta').innerHTML = [
+      { l: 'Reference',      v: ose.referenceNo },
+      { l: 'Financial Year', v: `FY ${ose.fy}` },
+      { l: 'As-of Date',    v: fmtD(ose.asOfDate) },
+      { l: 'Total Items',   v: String(ose.lines?.length || 0) },
+      { l: 'Total Value',   v: inr(totalValue) },
+      { l: 'Posted At',     v: fmtDT(ose.postedAt) },
+      { l: 'Posted By',     v: ose.postedBy?.name || ose.createdBy?.name || '—' },
+    ].map(m => `<div>
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:3px">${m.l}</div>
+      <div style="font-weight:600;font-size:13px">${m.v}</div>
+    </div>`).join('');
+
+    // Lines table
+    let runningTotal = 0;
+    const lines = (ose.lines || []).map(l => {
+      const lineVal = l.qty * (l.unitRate || 0);
+      runningTotal += lineVal;
+      return `<tr>
+        <td class="tdm">${l.itemId?.itemCode || '—'}</td>
+        <td><strong>${l.itemId?.name || '—'}</strong></td>
+        <td class="tdd">${l.warehouseId?.name || '—'} <span style="font-size:10px">(${l.warehouseId?.code || ''})</span></td>
+        <td class="tdd">${l.uomId?.code || '—'}</td>
+        <td class="tdm" style="text-align:right">${l.qty}</td>
+        <td class="tdm" style="text-align:right">${l.unitRate ? inr(l.unitRate) : '<span style="color:var(--warning)">—</span>'}</td>
+        <td class="tdm" style="text-align:right">${lineVal > 0 ? inr(lineVal) : '—'}</td>
+      </tr>`;
+    });
+
+    $('ose-detail-lines').innerHTML = lines.join('') ||
+      '<tr><td colspan="7"><div class="empty"><div class="et">No lines</div></div></td></tr>';
+
+    $('ose-detail-foot').innerHTML = `<tr style="background:var(--surface)">
+      <td colspan="4" style="padding:10px 14px;font-weight:600;font-size:12px">TOTAL</td>
+      <td style="padding:10px 14px;text-align:right;font-weight:600;font-family:\'JetBrains Mono\',monospace;font-size:12px">
+        ${(ose.lines || []).reduce((s, l) => s + l.qty, 0)}
+      </td>
+      <td></td>
+      <td style="padding:10px 14px;text-align:right;font-weight:700;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--brand)">
+        ${inr(runningTotal)}
+      </td>
+    </tr>`;
+
+    openM('m-ose-detail');
+  } catch(e) { toast(e.message, 'err'); }
+}
+
 async function printGRN(id){
   try{
     const d=await api('GET',`/purchase/grns/${id}`); const g=d.data;
