@@ -2438,29 +2438,61 @@ function defaultOSDate() {
 
 async function openOpeningStockModal() {
   await prefetch();
-  // prefetch does not include items — load them explicitly before building lines
+  // Load items explicitly — not included in prefetch
   if (!_items.length) {
     try {
       const d = await api('GET', '/masters/items?limit=200&isActive=true');
       _items = d.data || [];
     } catch(e) { toast('Could not load items: ' + e.message, 'err'); return; }
   }
+
+  // Check if OSE already exists — if yes, pre-fill the form with existing lines
+  let existingOSE = null;
+  try {
+    const d = await api('GET', '/stock/opening');
+    existingOSE = d.data;
+  } catch(e) { /* treat as new */ }
+
   $('os-lines').innerHTML = '';
-  const date = defaultOSDate();
-  sv('os-date', date);
-  sv('os-remarks', '');
+  sv('os-remarks', existingOSE?.remarks || '');
+
+  if (existingOSE) {
+    // Edit mode — set date and pre-fill lines
+    sv('os-date', new Date(existingOSE.asOfDate).toISOString().split('T')[0]);
+    const editableLines = (existingOSE.lines || []).filter(l => !l.isLocked);
+    const lockedLines   = (existingOSE.lines || []).filter(l => l.isLocked);
+    // Add editable lines as editable rows
+    editableLines.forEach(l => addOSLine(l));
+    // Add locked lines as read-only rows
+    lockedLines.forEach(l => addOSLineLocked(l));
+    if (!editableLines.length && !lockedLines.length) addOSLine();
+  } else {
+    // Create mode — default to April 1 of current FY
+    sv('os-date', defaultOSDate());
+    addOSLine();
+  }
+
   showOSFYBanner(null, true);
-  addOSLine();
   openM('m-opening-stock');
-  await onOSDateChange(date);
+  await onOSDateChange($('os-date').value);
 }
 
 async function onOSDateChange(dateStr) {
   if (!dateStr) { showOSFYBanner(null); return; }
   showOSFYBanner(null, true);
   try {
-    const d = await api('GET', `/stock/opening/fy-status?asOfDate=${dateStr}`);
-    showOSFYBanner(d);
+    const d = await api('GET', '/stock/opening');
+    const ose = d.data;
+    if (ose) {
+      // OSE document exists — show edit mode banner
+      const totalValue = (ose.lines||[]).reduce((s,l)=>s+(l.qty*(l.unitRate||0)),0);
+      showOSFYBanner({ exists: true, referenceNo: ose.referenceNo, fy: ose.fy,
+        asOfDate: ose.asOfDate, lineCount: ose.lines?.length||0, totalValue });
+    } else {
+      // No OSE yet — show create mode banner
+      const fy = getFYFromDate(dateStr);
+      showOSFYBanner({ exists: false, fy });
+    }
   } catch(e) {
     showOSFYBanner({ error: e.message });
   }
@@ -2484,27 +2516,41 @@ function showOSFYBanner(status, loading = false) {
     if (submitBtn) submitBtn.disabled = false;
     return;
   }
-  if (status.locked) {
+  if (status.exists) {
+    // OSE exists — modal is in edit mode
     banner.style.display = 'block';
-    banner.style.background = '#FEE2E2'; banner.style.color = '#991B1B';
-    banner.innerHTML = `<i class="fa-solid fa-lock"></i> <strong>FY ${status.fy} is locked.</strong> Opening stock <strong>${status.referenceNo}</strong> was already posted on ${fmtD(status.postedAt)} by ${status.postedBy}. To correct errors, use <strong>Stock Adjustment</strong>.`;
-    if (submitBtn) submitBtn.disabled = true;
+    banner.style.background = '#EFF6FF'; banner.style.color = '#1E40AF';
+    banner.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>
+      <strong>Editing ${status.referenceNo}</strong> (FY ${status.fy}) &mdash;
+      ${status.lineCount} line(s) &middot; Total ${inr(status.totalValue)}.
+      Changes will update existing opening stock.`;
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Update Opening Stock'; }
   } else {
+    // No OSE yet — create mode
     banner.style.display = 'block';
     banner.style.background = '#D1FAE5'; banner.style.color = '#065F46';
-    banner.innerHTML = `<i class="fa-solid fa-circle-check"></i> <strong>FY ${status.fy}</strong> — No opening stock posted yet. Ready to post.`;
-    if (submitBtn) submitBtn.disabled = false;
+    banner.innerHTML = `<i class="fa-solid fa-circle-check"></i>
+      <strong>FY ${status.fy}</strong> &mdash; No opening stock yet. This will create a new entry.`;
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fa-solid fa-check-double"></i> Post Opening Stock'; }
   }
 }
 
-function addOSLine() {
+function addOSLine(prefill = null) {
   const row = document.createElement('tr');
+  const selItem = `<option value="">Select item…</option>` +
+    _items.map(i => `<option value="${i._id}" data-uom="${i.uomId?._id || i.uomId || ''}" ${prefill && String(prefill.itemId?._id || prefill.itemId) === i._id ? 'selected' : ''}>${i.itemCode} · ${i.name}</option>`).join('');
+  const selWH = `<option value="">Select…</option>` +
+    _whs.map(w => `<option value="${w._id}" ${prefill && String(prefill.warehouseId?._id || prefill.warehouseId) === w._id ? 'selected' : ''}>${w.name}</option>`).join('');
+  const selUOM = `<option value="">—</option>` +
+    _uoms.map(u => `<option value="${u._id}" ${prefill && String(prefill.uomId?._id || prefill.uomId) === u._id ? 'selected' : ''}>${u.code}</option>`).join('');
   row.innerHTML = `
-    <td><select class="lin ositem" style="min-width:185px"><option value="">Select item…</option>${_items.map(i => `<option value="${i._id}" data-uom="${i.uomId?._id || i.uomId || ''}">${i.itemCode} · ${i.name}</option>`).join('')}</select></td>
-    <td><select class="lin oswh" style="min-width:120px"><option value="">Select…</option>${_whs.map(w => `<option value="${w._id}">${w.name}</option>`).join('')}</select></td>
-    <td><select class="lin osuom" style="min-width:70px"><option value="">—</option>${_uoms.map(u => `<option value="${u._id}">${u.code}</option>`).join('')}</select></td>
-    <td><input type="number" class="lin osqty" placeholder="Qty" min="0.01" step="0.01"></td>
-    <td><input type="number" class="lin osrate" placeholder="Rate ₹" min="0" step="0.01" style="border-color:var(--warning);" title="Rate is required for stock valuation"></td>
+    <td><select class="lin ositem" style="min-width:185px">${selItem}</select></td>
+    <td><select class="lin oswh"   style="min-width:120px">${selWH}</select></td>
+    <td><select class="lin osuom"  style="min-width:70px">${selUOM}</select></td>
+    <td><input type="number" class="lin osqty"  placeholder="Qty"    min="0.01" step="0.01" value="${prefill?.qty || ''}"></td>
+    <td><input type="number" class="lin osrate" placeholder="Rate ₹" min="0"    step="0.01" value="${prefill?.unitRate || ''}"
+         style="border-color:${prefill?.unitRate > 0 ? '' : 'var(--warning)'};"
+         title="Rate is required for stock valuation"></td>
     <td><button class="rml" onclick="this.closest('tr').remove()"><i class="fa-solid fa-minus"></i></button></td>
   `;
   row.querySelector('.ositem').addEventListener('change', function () {
@@ -2515,7 +2561,6 @@ function addOSLine() {
     this.style.borderColor = (this.value && Number(this.value) > 0) ? '' : 'var(--warning)';
   });
   $('os-lines').appendChild(row);
-  // Lazy-load fallback: if _items was empty when modal opened, populate all dropdowns once loaded
   if (!_items.length) {
     api('GET', '/masters/items?limit=200&isActive=true').then(d => {
       _items = d.data || [];
@@ -2527,17 +2572,58 @@ function addOSLine() {
   }
 }
 
+// Read-only row for locked lines (transactions exist — cannot edit)
+function addOSLineLocked(line) {
+  const row = document.createElement('tr');
+  row.style.background = '#FFF7ED';
+  const itemName = line.itemId?.name || '—';
+  const itemCode = line.itemId?.itemCode || '—';
+  const whName   = line.warehouseId?.name || '—';
+  const uomCode  = line.uomId?.code || '—';
+  row.innerHTML = `
+    <td><span class="tdm">${itemCode}</span> <span style="font-size:12px">${itemName}</span></td>
+    <td class="tdd">${whName}</td>
+    <td class="tdd">${uomCode}</td>
+    <td class="tdm" style="text-align:right">${line.qty}</td>
+    <td class="tdm" style="text-align:right">${line.unitRate ? inr(line.unitRate) : '—'}</td>
+    <td style="text-align:center">
+      <span class="bdg b-pending" style="font-size:10px" title="Transactions exist — cannot edit">
+        <i class="fa-solid fa-lock" style="font-size:9px"></i> Locked
+      </span>
+    </td>
+  `;
+  // Store locked line data as hidden inputs so PATCH still includes them
+  row.dataset.locked     = 'true';
+  row.dataset.itemId     = line.itemId?._id || line.itemId;
+  row.dataset.warehouseId = line.warehouseId?._id || line.warehouseId;
+  row.dataset.uomId      = line.uomId?._id || line.uomId;
+  row.dataset.qty        = line.qty;
+  row.dataset.unitRate   = line.unitRate || 0;
+  $('os-lines').appendChild(row);
+}
+
 async function saveOpeningStock() {
   const asOfDate = gv('os-date');
   if (!asOfDate) { toast('As-of date is required', 'err'); return; }
 
-  const lines = [...$('os-lines').querySelectorAll('tr')].map(row => ({
-    itemId:      row.querySelector('.ositem')?.value,
-    warehouseId: row.querySelector('.oswh')?.value,
-    uomId:       row.querySelector('.osuom')?.value,
-    qty:         Number(row.querySelector('.osqty')?.value)  || 0,
-    unitRate:    Number(row.querySelector('.osrate')?.value) || 0,
-  })).filter(l => l.itemId && l.warehouseId && l.uomId && l.qty > 0);
+  const lines = [
+    // Editable lines (from form inputs)
+    ...[...$('os-lines').querySelectorAll('tr:not([data-locked])')].map(row => ({
+      itemId:      row.querySelector('.ositem')?.value,
+      warehouseId: row.querySelector('.oswh')?.value,
+      uomId:       row.querySelector('.osuom')?.value,
+      qty:         Number(row.querySelector('.osqty')?.value)  || 0,
+      unitRate:    Number(row.querySelector('.osrate')?.value) || 0,
+    })),
+    // Locked lines (read-only rows — pass through unchanged)
+    ...[...$('os-lines').querySelectorAll('tr[data-locked]')].map(row => ({
+      itemId:      row.dataset.itemId,
+      warehouseId: row.dataset.warehouseId,
+      uomId:       row.dataset.uomId,
+      qty:         Number(row.dataset.qty)      || 0,
+      unitRate:    Number(row.dataset.unitRate) || 0,
+    })),
+  ].filter(l => l.itemId && l.warehouseId && l.uomId && l.qty > 0);
 
   if (!lines.length) { toast('Add at least one item with qty', 'err'); return; }
 
@@ -2566,24 +2652,37 @@ Zero rate means stock value will show ₹0 in reports. Continue?`)) return;
   }
 
   const fy = getFYFromDate(asOfDate);
-  if (!confirm(`Post opening stock for FY ${fy}?
-• ${lines.length} line(s)
-• As-of date: ${asOfDate}
 
-This CANNOT be undone. FY ${fy} will be locked.`)) return;
+  // Check if OSE already exists to decide POST vs PATCH
+  let oseExists = false;
+  try {
+    const check = await api('GET', '/stock/opening');
+    oseExists = !!check.data;
+  } catch(e) { /* treat as not exists */ }
+
+  const confirmMsg = oseExists
+    ? `Update opening stock?\n\u2022 ${lines.length} line(s) submitted\n\u2022 As-of date: ${asOfDate}\n\nLocked lines (with transactions) will be skipped automatically.`
+    : `Post opening stock for FY ${fy}?\n\u2022 ${lines.length} line(s)\n\u2022 As-of date: ${asOfDate}`;
+  if (!confirm(confirmMsg)) return;
 
   try {
-    const d = await api('POST', '/stock/opening', { asOfDate, lines, remarks: gv('os-remarks') || undefined });
-    toast(d.message || 'Opening stock posted');
+    let d;
+    if (oseExists) {
+      d = await api('PATCH', '/stock/opening', { lines, remarks: gv('os-remarks') || undefined });
+      if (d.data?.skippedLines?.length) {
+        toast(`Updated. ${d.data.skippedLines.length} locked line(s) were skipped.`, 'warn');
+      } else {
+        toast(d.message || 'Opening stock updated');
+      }
+    } else {
+      d = await api('POST', '/stock/opening', { asOfDate, lines, remarks: gv('os-remarks') || undefined });
+      toast(d.message || 'Opening stock created');
+    }
     closeM('m-opening-stock');
     loadStockSummary();
-    // Refresh opening stock list page if currently visible
     const activePg = document.querySelector('.page:not(.hidden)');
     if (activePg?.id === 'pg-opening-stock') loadOpeningStockPage();
   } catch (e) {
-    if (e.message?.includes('FY') && e.message?.includes('locked')) {
-      showOSFYBanner({ locked: true, error: e.message });
-    }
     toast(e.message, 'err');
   }
 }
@@ -2984,46 +3083,52 @@ async function loadOpeningStockPage() {
   tbody.innerHTML = '<tr><td colspan="8" class="lc"><span class="spin"></span></td></tr>';
   try {
     const d = await api('GET', '/stock/opening');
-    const list = d.data || [];
+    const ose = d.data; // single object or null
 
-    tbody.innerHTML = list.length ? list.map(ose => {
-      // Compute total value from lines
-      const totalValue = (ose.lines || []).reduce((sum, l) => sum + (l.qty * (l.unitRate || 0)), 0);
-      const fyDisplay  = `FY ${ose.fy}`;
+    if (!ose) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty">
+        <div class="ei"><i class="fa-solid fa-database"></i></div>
+        <div class="et">No opening stock posted yet</div>
+        <div class="es">Post opening stock to set starting balances for all warehouses.</div>
+        <button class="btn btn-primary" onclick="openOpeningStockModal()">
+          <i class="fa-solid fa-plus"></i> Post Opening Stock
+        </button>
+      </div></td></tr>`;
+      return;
+    }
 
-      return `<tr>
-        <td class="tdm">${ose.referenceNo}</td>
-        <td><span class="bdg b-school">${fyDisplay}</span></td>
-        <td class="tdd">${fmtD(ose.asOfDate)}</td>
-        <td class="tdm" style="text-align:right">${ose.lines?.length || 0}</td>
-        <td class="tdm" style="text-align:right">${inr(totalValue)}</td>
-        <td class="tdd">${fmtDT(ose.postedAt)}</td>
-        <td class="tdd">${ose.postedBy?.name || ose.createdBy?.name || '—'}</td>
-        <td class="tda">
-          <button class="btn btn-sm btn-secondary" onclick="viewOSEDetail('${ose._id}')">
-            <i class="fa-solid fa-eye"></i> View Lines
-          </button>
-        </td>
-      </tr>`;
-    }).join('') : `<tr><td colspan="8"><div class="empty">
-      <div class="ei"><i class="fa-solid fa-database"></i></div>
-      <div class="et">No opening stock posted yet</div>
-      <div class="es">Post opening stock once per financial year to set the starting balances for all warehouses.</div>
-      <button class="btn btn-primary" onclick="openOpeningStockModal()">
-        <i class="fa-solid fa-plus"></i> Post Opening Stock
-      </button>
-    </div></td></tr>`;
+    const totalValue = (ose.lines || []).reduce((sum, l) => sum + (l.qty * (l.unitRate || 0)), 0);
+    const lockedCount = (ose.lines || []).filter(l => l.isLocked).length;
+    tbody.innerHTML = `<tr>
+      <td class="tdm">${ose.referenceNo}</td>
+      <td><span class="bdg b-school">FY ${ose.fy}</span></td>
+      <td class="tdd">${fmtD(ose.asOfDate)}</td>
+      <td class="tdm" style="text-align:right">${ose.lines?.length || 0}
+        ${lockedCount ? `<span class="bdg b-pending" style="font-size:10px;margin-left:4px">${lockedCount} locked</span>` : ''}
+      </td>
+      <td class="tdm" style="text-align:right">${inr(totalValue)}</td>
+      <td class="tdd">${fmtDT(ose.createdAt)}</td>
+      <td class="tdd">${ose.lastEditedBy?.name || ose.createdBy?.name || '—'}</td>
+      <td class="tda">
+        <button class="btn btn-sm btn-secondary" onclick="viewOSEDetail()">
+          <i class="fa-solid fa-eye"></i> View Lines
+        </button>
+        <button class="btn btn-sm btn-primary" onclick="openOpeningStockModal()">
+          <i class="fa-solid fa-pen"></i> Edit
+        </button>
+      </td>
+    </tr>`;
   } catch(e) {
     toast(e.message, 'err');
     tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="et">Failed to load</div><div class="es">${e.message}</div></div></td></tr>`;
   }
 }
 
-async function viewOSEDetail(id) {
+async function viewOSEDetail() {
   try {
-    const d    = await api('GET', '/stock/opening');
-    const ose  = (d.data || []).find(o => o._id === id);
-    if (!ose) { toast('Entry not found', 'err'); return; }
+    const d   = await api('GET', '/stock/opening');
+    const ose = d.data;
+    if (!ose) { toast('No opening stock found', 'err'); return; }
 
     $('ose-detail-title').textContent = ose.referenceNo;
     $('ose-detail-sub').textContent   = `Financial Year ${ose.fy} · As-of ${fmtD(ose.asOfDate)}`;
