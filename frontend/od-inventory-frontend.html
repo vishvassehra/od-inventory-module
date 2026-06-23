@@ -698,6 +698,55 @@ tbody tr:hover td{background:#FAFBFD}
   </div>
 </div>
 
+<!-- Blocking Transactions Viewer Modal -->
+<div class="ov" id="m-line-txns">
+  <div class="modal mlg">
+    <div class="mhd">
+      <div>
+        <span class="mtitle">Blocking Transactions</span>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px" id="line-txns-sub"></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn btn-ghost btn-icon btn-sm" onclick="refreshLineTransactions()" title="Refresh">
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+        <button class="mx" onclick="closeM('m-line-txns')">×</button>
+      </div>
+    </div>
+    <div class="mbody">
+      <div id="line-txns-info" style="background:var(--surface);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:13px"></div>
+      <div id="line-txns-warn" style="display:none;background:#FEE2E2;border-radius:var(--r);padding:10px 14px;font-size:12px;color:#991B1B;margin-bottom:14px"></div>
+      <div class="tw2">
+        <table>
+          <thead><tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Doc No.</th>
+            <th>Warehouse</th>
+            <th style="text-align:right">Qty</th>
+            <th>Remarks</th>
+          </tr></thead>
+          <tbody id="line-txns-tbody">
+            <tr><td colspan="6" class="lc"><span class="spin"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:14px;padding:12px 14px;background:#FEF3C7;border-radius:var(--r);font-size:12px;color:#92400E">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <strong>To edit this opening stock line:</strong>
+        delete or reverse the transactions listed above (from their respective pages — GRN, SIV, etc.),
+        then click <strong>Delete Opening Entry</strong> to clear the base entry and re-enter with the correct values.
+      </div>
+    </div>
+    <div class="mft">
+      <button class="btn btn-secondary" onclick="closeM('m-line-txns')">Close</button>
+      <button class="btn btn-danger" id="line-txns-delete-btn" onclick="deleteOSELedgerEntry()" disabled>
+        <i class="fa-solid fa-trash"></i> Delete Opening Entry
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Stock Transfer Modal -->
 <div class="ov" id="m-transfer">
   <div class="modal mxl">
@@ -3363,22 +3412,145 @@ async function openOSEAddModal() {
   openM('m-opening-stock');
 }
 
+// ── module-level state for the blocking txns viewer ──────────────
+let _lineTxnsItemId     = null;
+let _lineTxnsWarehouseId = null;
+let _lineTxnsItemName   = '';
+let _lineTxnsWhName     = '';
+
+const txnTypeColors = {
+  grn:          { bg:'var(--success)',  label:'GRN'            },
+  issue:        { bg:'var(--danger)',   label:'SIV Issue'       },
+  return:       { bg:'var(--brand)',    label:'Return'          },
+  opening:      { bg:'var(--purple)',   label:'Opening'         },
+  adj_add:      { bg:'var(--success)',  label:'Adj Add'         },
+  adj_sub:      { bg:'var(--danger)',   label:'Adj Sub'         },
+  transfer_in:  { bg:'var(--accent)',   label:'Transfer In'     },
+  transfer_out: { bg:'var(--warning)',  label:'Transfer Out'    },
+};
+
 async function viewLineTransactions(itemId, warehouseId, itemName, whName) {
-  toast(`Loading transactions for ${itemName} in ${whName}…`);
+  // Store for refresh + delete actions
+  _lineTxnsItemId      = itemId;
+  _lineTxnsWarehouseId = warehouseId;
+  _lineTxnsItemName    = itemName;
+  _lineTxnsWhName      = whName;
+
+  // Reset and open modal immediately — load data async
+  $('line-txns-sub').textContent    = `${itemName}  →  ${whName}`;
+  $('line-txns-info').innerHTML     = '<span class="spin"></span> Loading…';
+  $('line-txns-warn').style.display = 'none';
+  $('line-txns-tbody').innerHTML    = '<tr><td colspan="6" class="lc"><span class="spin"></span></td></tr>';
+  $('line-txns-delete-btn').disabled = true;
+  openM('m-line-txns');
+
+  await loadLineTransactions();
+}
+
+async function loadLineTransactions() {
+  if (!_lineTxnsItemId || !_lineTxnsWarehouseId) return;
   try {
-    const d = await api('GET', `/stock/opening/line-transactions/${itemId}/${warehouseId}`);
+    const d    = await api('GET', `/stock/opening/line-transactions/${_lineTxnsItemId}/${_lineTxnsWarehouseId}`);
     const txns = d.data || [];
+    const meta = d.meta  || {};
+
+    // Info strip
+    $('line-txns-info').innerHTML = `
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px">Item</div>
+          <div style="font-weight:600">${_lineTxnsItemName}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px">Warehouse</div>
+          <div style="font-weight:600">${_lineTxnsWhName}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px">Opening Date</div>
+          <div style="font-weight:600">${fmtD(meta.asOfDate)}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px">Blocking Txns</div>
+          <div style="font-weight:600;color:${txns.length > 0 ? 'var(--danger)' : 'var(--success)'}">${txns.length}</div>
+        </div>
+      </div>`;
+
     if (!txns.length) {
-      toast('No blocking transactions found — line may already be editable', 'warn');
+      // No blocking transactions — line is now editable
+      $('line-txns-tbody').innerHTML = `<tr><td colspan="6">
+        <div class="empty">
+          <div class="ei"><i class="fa-solid fa-circle-check" style="color:var(--success)"></i></div>
+          <div class="et" style="color:var(--success)">No blocking transactions</div>
+          <div class="es">This line has no transactions after the opening date.<br>
+            Click <strong>Delete Opening Entry</strong> to clear the ledger entry and re-enter with the correct values.</div>
+        </div></td></tr>`;
+      $('line-txns-warn').style.display = 'none';
+      // Enable delete — no transactions blocking it
+      $('line-txns-delete-btn').disabled = false;
       return;
     }
-    // Show in a simple alert for now (Phase 4 will build the full viewer modal)
-    const lines = txns.map(t =>
-      `${fmtD(t.txnDate)}  ${t.txnType.toUpperCase().padEnd(12)}  ${t.refDocNo||'—'}  ${t.qty > 0 ? '+'+t.qty : t.qty}`
-    ).join('\n');
-    alert(`Blocking transactions for ${itemName} in ${whName}:\n\n${lines}\n\n` +
-      `Delete or reverse these transactions, then refresh this page to edit the line.`);
-  } catch(e) { toast(e.message, 'err'); }
+
+    // Transactions exist — show table
+    $('line-txns-warn').style.display = 'block';
+    $('line-txns-warn').innerHTML = `<i class="fa-solid fa-lock"></i>
+      <strong>${txns.length} transaction(s)</strong> exist for this item in this warehouse on or after the opening date.
+      Delete or reverse all of them before the opening entry can be cleared.`;
+
+    $('line-txns-tbody').innerHTML = txns.map(t => {
+      const tc    = txnTypeColors[t.txnType] || { bg:'var(--muted)', label: t.txnType };
+      const qtyColor = t.qty > 0 ? 'var(--success)' : 'var(--danger)';
+      return `<tr>
+        <td class="tdd">${fmtD(t.txnDate)}</td>
+        <td>
+          <span style="background:${tc.bg};color:#fff;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap">
+            ${tc.label}
+          </span>
+        </td>
+        <td class="tdm">${t.refDocNo || '—'}</td>
+        <td class="tdd">${t.warehouseId?.name || '—'}</td>
+        <td class="tdm" style="text-align:right;color:${qtyColor};font-weight:600">
+          ${t.qty > 0 ? '+' + t.qty : t.qty}
+        </td>
+        <td class="tdd" style="font-size:11px">${t.remarks || '—'}</td>
+      </tr>`;
+    }).join('');
+
+    // Delete button disabled while transactions exist
+    $('line-txns-delete-btn').disabled = true;
+
+  } catch(e) {
+    $('line-txns-tbody').innerHTML = `<tr><td colspan="6">
+      <div class="empty"><div class="et">Failed to load</div><div class="es">${e.message}</div></div>
+    </td></tr>`;
+    toast(e.message, 'err');
+  }
+}
+
+async function refreshLineTransactions() {
+  $('line-txns-tbody').innerHTML = '<tr><td colspan="6" class="lc"><span class="spin"></span></td></tr>';
+  await loadLineTransactions();
+}
+
+async function deleteOSELedgerEntry() {
+  if (!_lineTxnsItemId || !_lineTxnsWarehouseId) return;
+  if (!confirm(
+    `Delete the opening stock ledger entry for:\n` +
+    `• ${_lineTxnsItemName} in ${_lineTxnsWhName}\n\n` +
+    `This clears only the opening balance entry from the ledger.\n` +
+    `The line will remain in the opening stock document for re-editing.`
+  )) return;
+  try {
+    const d = await api('DELETE', `/stock/opening/ledger-entry/${_lineTxnsItemId}/${_lineTxnsWarehouseId}`);
+    toast(d.message || 'Opening entry deleted');
+    closeM('m-line-txns');
+    // Reload the opening stock page so line now shows as editable
+    loadOpeningStockPage();
+  } catch(e) {
+    // Backend will block if transactions still exist — show in the modal warn strip
+    $('line-txns-warn').style.display = 'block';
+    $('line-txns-warn').innerHTML = `<i class="fa-solid fa-circle-xmark"></i> ${e.message}`;
+    toast(e.message, 'err');
+  }
 }
 
 async function printGRN(id){
