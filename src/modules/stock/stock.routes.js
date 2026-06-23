@@ -33,9 +33,13 @@ router.get('/returns/:id',...canRead,       returnCtrl.getOne);
 router.post('/returns',   ...storeAndAdmin, returnCtrl.create);           // auto-posts on create
 
 // ── OPENING STOCK ─────────────────────────────────────────────────────────────
-router.get('/opening/fy-status', ...adminOnly, openingCtrl.fyStatus);  // must be before /:id
-router.get('/opening',           ...adminOnly, openingCtrl.list);
-router.post('/opening',          ...adminOnly, openingCtrl.create);
+// NOTE: specific sub-paths must come before wildcard patterns.
+router.patch('/opening/date',                                    ...adminOnly, openingCtrl.updateDate);      // change asOfDate
+router.get('/opening/line-transactions/:itemId/:warehouseId',    ...adminOnly, openingCtrl.lineTransactions);// view blocking txns for a line
+router.delete('/opening/ledger-entry/:itemId/:warehouseId',      ...adminOnly, openingCtrl.deleteLedgerEntry);// delete one OSE ledger entry
+router.get('/opening',                                           ...adminOnly, openingCtrl.get);             // get single OSE
+router.post('/opening',                                          ...adminOnly, openingCtrl.create);          // create OSE
+router.patch('/opening',                                         ...adminOnly, openingCtrl.update);          // update lines
 
 // ── INTER-WAREHOUSE TRANSFERS ─────────────────────────────────────────────────
 router.get('/transfers',          ...canRead,       transferCtrl.list);

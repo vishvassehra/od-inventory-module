@@ -10,25 +10,23 @@ const openingStockLineSchema = new mongoose.Schema({
 
 const openingStockSchema = new mongoose.Schema(
   {
-    tenantId:    { type: String, required: true, index: true },
-    referenceNo: { type: String, required: true },
-    fy:          { type: String, required: true },  // e.g. "26-27" — one OSE per FY per tenant
-    asOfDate:    { type: Date,   required: true },
-    lines: {
-      type: [openingStockLineSchema],
-      validate: [(v) => v.length > 0, 'Opening stock must have at least one line'],
-    },
-    isPosted:  { type: Boolean, default: false },
-    postedAt:  { type: Date,    default: null },
-    postedBy:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    remarks:   { type: String,  trim: true, default: null },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    tenantId:     { type: String,   required: true },
+    referenceNo:  { type: String,   required: true },
+    // fy is display-only, derived from asOfDate — NOT used for locking
+    fy:           { type: String,   required: true },
+    asOfDate:     { type: Date,     required: true },
+    // No min-length — OSE document can exist with zero lines (lines added incrementally)
+    lines:        { type: [openingStockLineSchema], default: [] },
+    remarks:      { type: String,   trim: true, default: null },
+    createdBy:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    lastEditedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    lastEditedAt: { type: Date,     default: null },
   },
   { timestamps: true }
 );
 
-// Hard constraint: only one OSE per FY per tenant
-openingStockSchema.index({ tenantId: 1, fy: 1 }, { unique: true });
+// ONE OSE per tenant — not per FY
+openingStockSchema.index({ tenantId: 1 }, { unique: true });
 openingStockSchema.index({ tenantId: 1, referenceNo: 1 }, { unique: true });
 
 module.exports = mongoose.model('OpeningStock', openingStockSchema);
