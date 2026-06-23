@@ -33,8 +33,9 @@ router.get('/returns/:id',...canRead,       returnCtrl.getOne);
 router.post('/returns',   ...storeAndAdmin, returnCtrl.create);           // auto-posts on create
 
 // ── OPENING STOCK ─────────────────────────────────────────────────────────────
-router.get('/opening',    ...adminOnly, openingCtrl.list);
-router.post('/opening',   ...adminOnly, openingCtrl.create);
+router.get('/opening/fy-status', ...adminOnly, openingCtrl.fyStatus);  // must be before /:id
+router.get('/opening',           ...adminOnly, openingCtrl.list);
+router.post('/opening',          ...adminOnly, openingCtrl.create);
 
 // ── INTER-WAREHOUSE TRANSFERS ─────────────────────────────────────────────────
 router.get('/transfers',          ...canRead,       transferCtrl.list);
