@@ -649,27 +649,18 @@ tbody tr:hover td{background:#FAFBFD}
       <!-- OPENING STOCK -->
       <div class="page hidden" id="pg-opening-stock">
         <div class="ph">
-          <div><div class="pt">Opening Stock</div><div class="ps">Posted opening stock entries by financial year</div></div>
-          <div class="pac role-admin">
-            <button class="btn btn-primary" onclick="openOpeningStockModal()">
-              <i class="fa-solid fa-plus"></i> Post Opening Stock
+          <div><div class="pt">Opening Stock</div><div class="ps">Per-warehouse opening balances</div></div>
+          <div class="pac role-admin" id="ose-page-actions" style="display:none">
+            <button class="btn btn-secondary" onclick="saveOSEInline()" id="ose-save-btn">
+              <i class="fa-solid fa-floppy-disk"></i> Save Changes
+            </button>
+            <button class="btn btn-primary" onclick="openOSEAddModal()">
+              <i class="fa-solid fa-plus"></i> Add Lines
             </button>
           </div>
         </div>
-        <div class="card">
-          <div class="tw2"><table>
-            <thead><tr>
-              <th>Reference No.</th>
-              <th>Financial Year</th>
-              <th>As-of Date</th>
-              <th style="text-align:right">Items</th>
-              <th style="text-align:right">Total Value</th>
-              <th>Posted At</th>
-              <th>Posted By</th>
-              <th></th>
-            </tr></thead>
-            <tbody id="ose-tbody"><tr><td colspan="8" class="lc"><span class="spin"></span></td></tr></tbody>
-          </table></div>
+        <div id="ose-page-body">
+          <div class="lc"><span class="spin"></span></div>
         </div>
       </div>
 
@@ -679,34 +670,30 @@ tbody tr:hover td{background:#FAFBFD}
 
 <!-- ── 1D MODALS ── -->
 
-<!-- Opening Stock Detail Modal -->
+<!-- Change Opening Date Modal -->
 <div class="ov" id="m-ose-detail">
-  <div class="modal mxl">
+  <div class="modal mmd">
     <div class="mhd">
-      <div>
-        <span class="mtitle" id="ose-detail-title">Opening Stock Detail</span>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px" id="ose-detail-sub"></div>
-      </div>
+      <span class="mtitle">Change Opening Stock Date</span>
       <button class="mx" onclick="closeM('m-ose-detail')">×</button>
     </div>
     <div class="mbody">
-      <div id="ose-detail-meta" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;background:var(--surface);border-radius:var(--r);padding:14px;margin-bottom:18px;font-size:13px"></div>
-      <div class="tw2"><table>
-        <thead><tr>
-          <th>Item Code</th>
-          <th>Item Name</th>
-          <th>Warehouse</th>
-          <th>UOM</th>
-          <th style="text-align:right">Qty</th>
-          <th style="text-align:right">Unit Rate ₹</th>
-          <th style="text-align:right">Value ₹</th>
-        </tr></thead>
-        <tbody id="ose-detail-lines"></tbody>
-        <tfoot id="ose-detail-foot"></tfoot>
-      </table></div>
+      <div id="ose-date-warn" style="background:#FEF3C7;border-radius:var(--r);padding:10px 14px;font-size:12px;color:#92400E;margin-bottom:16px">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        If opening stock ledger entries already exist, you must delete them first before changing the date.
+        Use the <strong>Delete Entry</strong> button on each line.
+      </div>
+      <div class="fg">
+        <label class="fl">New As-of Date *</label>
+        <input class="inp" type="date" id="ose-new-date">
+        <div class="fh">Must be on or before the earliest transaction in the system.</div>
+      </div>
     </div>
     <div class="mft">
-      <button class="btn btn-secondary" onclick="closeM('m-ose-detail')">Close</button>
+      <button class="btn btn-secondary" onclick="closeM('m-ose-detail')">Cancel</button>
+      <button class="btn btn-primary" onclick="updateOSEDate()">
+        <i class="fa-solid fa-calendar-check"></i> Update Date
+      </button>
     </div>
   </div>
 </div>
@@ -1202,6 +1189,11 @@ const closeM=id=>{
     _editUserId=null;
     const upEl=$('upass'); if(upEl) upEl.closest('.fg').style.display='';
     const mt=$('m-user')?.querySelector('.mtitle'); if(mt) mt.textContent='Add User';
+  }
+  // Restore opening stock modal date field to editable state on close
+  if(id==='m-opening-stock'){
+    const df=$('os-date'); if(df){ df.readOnly=false; df.style.background=''; }
+    const sb=$('os-submit-btn'); if(sb){ sb.disabled=false; sb.innerHTML='<i class="fa-solid fa-check-double"></i> Post Opening Stock'; }
   }
 };
 document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show')}));
@@ -2474,6 +2466,9 @@ async function openOpeningStockModal() {
 
   showOSFYBanner(null, true);
   openM('m-opening-stock');
+  // Ensure date field is editable when opening for the first time (not add-only mode)
+  const dateField = $('os-date');
+  if (dateField && !existingOSE) { dateField.readOnly = false; dateField.style.background = ''; }
   await onOSDateChange($('os-date').value);
 }
 
@@ -3076,109 +3071,313 @@ async function viewAdjDetail(id){
 //  PRINT — GRN / SIV
 // ══════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════
-//  OPENING STOCK LIST PAGE
+//  OPENING STOCK PAGE — WAREHOUSE-GROUPED VIEW
 // ══════════════════════════════════════════════════════
+
+// Cache of the loaded OSE for inline edit access
+let _currentOSE = null;
+
 async function loadOpeningStockPage() {
-  const tbody = $('ose-tbody'); if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="8" class="lc"><span class="spin"></span></td></tr>';
+  const body = $('ose-page-body'); if (!body) return;
+  body.innerHTML = '<div class="lc"><span class="spin"></span></div>';
   try {
     const d = await api('GET', '/stock/opening');
-    const ose = d.data; // single object or null
-
-    if (!ose) {
-      tbody.innerHTML = `<tr><td colspan="8"><div class="empty">
+    _currentOSE = d.data;
+    if (!_currentOSE) {
+      // No OSE yet — empty state
+      $('ose-page-actions').style.display = 'none';
+      body.innerHTML = `<div class="card"><div class="empty">
         <div class="ei"><i class="fa-solid fa-database"></i></div>
         <div class="et">No opening stock posted yet</div>
-        <div class="es">Post opening stock to set starting balances for all warehouses.</div>
+        <div class="es">Post opening stock to set starting balances for all warehouses and departments.</div>
         <button class="btn btn-primary" onclick="openOpeningStockModal()">
           <i class="fa-solid fa-plus"></i> Post Opening Stock
         </button>
-      </div></td></tr>`;
+      </div></div>`;
       return;
     }
-
-    const totalValue = (ose.lines || []).reduce((sum, l) => sum + (l.qty * (l.unitRate || 0)), 0);
-    const lockedCount = (ose.lines || []).filter(l => l.isLocked).length;
-    tbody.innerHTML = `<tr>
-      <td class="tdm">${ose.referenceNo}</td>
-      <td><span class="bdg b-school">FY ${ose.fy}</span></td>
-      <td class="tdd">${fmtD(ose.asOfDate)}</td>
-      <td class="tdm" style="text-align:right">${ose.lines?.length || 0}
-        ${lockedCount ? `<span class="bdg b-pending" style="font-size:10px;margin-left:4px">${lockedCount} locked</span>` : ''}
-      </td>
-      <td class="tdm" style="text-align:right">${inr(totalValue)}</td>
-      <td class="tdd">${fmtDT(ose.createdAt)}</td>
-      <td class="tdd">${ose.lastEditedBy?.name || ose.createdBy?.name || '—'}</td>
-      <td class="tda">
-        <button class="btn btn-sm btn-secondary" onclick="viewOSEDetail()">
-          <i class="fa-solid fa-eye"></i> View Lines
-        </button>
-        <button class="btn btn-sm btn-primary" onclick="openOpeningStockModal()">
-          <i class="fa-solid fa-pen"></i> Edit
-        </button>
-      </td>
-    </tr>`;
+    $('ose-page-actions').style.display = 'flex';
+    renderOSEPage(_currentOSE);
   } catch(e) {
     toast(e.message, 'err');
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="et">Failed to load</div><div class="es">${e.message}</div></div></td></tr>`;
+    body.innerHTML = `<div class="card"><div class="empty"><div class="et">Failed to load</div><div class="es">${e.message}</div></div></div>`;
   }
 }
 
-async function viewOSEDetail() {
-  try {
-    const d   = await api('GET', '/stock/opening');
-    const ose = d.data;
-    if (!ose) { toast('No opening stock found', 'err'); return; }
+function renderOSEPage(ose) {
+  const lines       = ose.lines || [];
+  const totalValue  = lines.reduce((s,l) => s + l.qty*(l.unitRate||0), 0);
+  const lockedCount = lines.filter(l => l.isLocked).length;
+  const editCount   = lines.length - lockedCount;
 
-    $('ose-detail-title').textContent = ose.referenceNo;
-    $('ose-detail-sub').textContent   = `Financial Year ${ose.fy} · As-of ${fmtD(ose.asOfDate)}`;
+  // Group lines by warehouse
+  const groups = {};
+  lines.forEach(l => {
+    const wid  = l.warehouseId?._id || l.warehouseId || 'unknown';
+    const wName = l.warehouseId?.name || 'Unknown Warehouse';
+    const wCode = l.warehouseId?.code || '';
+    if (!groups[wid]) groups[wid] = { wid, wName, wCode, lines: [] };
+    groups[wid].lines.push(l);
+  });
 
-    // Meta strip
-    const totalValue = (ose.lines || []).reduce((sum, l) => sum + (l.qty * (l.unitRate || 0)), 0);
-    $('ose-detail-meta').innerHTML = [
-      { l: 'Reference',      v: ose.referenceNo },
-      { l: 'Financial Year', v: `FY ${ose.fy}` },
-      { l: 'As-of Date',    v: fmtD(ose.asOfDate) },
-      { l: 'Total Items',   v: String(ose.lines?.length || 0) },
-      { l: 'Total Value',   v: inr(totalValue) },
-      { l: 'Posted At',     v: fmtDT(ose.postedAt) },
-      { l: 'Posted By',     v: ose.postedBy?.name || ose.createdBy?.name || '—' },
-    ].map(m => `<div>
-      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:3px">${m.l}</div>
-      <div style="font-weight:600;font-size:13px">${m.v}</div>
-    </div>`).join('');
+  const body = $('ose-page-body');
+  body.innerHTML = `
+    <!-- Header Info Card -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="cbody">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="tdm" style="font-size:15px;font-weight:700">${ose.referenceNo}</span>
+            <span class="bdg b-school">FY ${ose.fy}</span>
+            <span class="tdd" style="font-size:12px">Created ${fmtD(ose.createdAt)} by ${ose.createdBy?.name||'—'}</span>
+            ${ose.lastEditedBy ? `<span class="tdd" style="font-size:12px">· Edited ${fmtDT(ose.lastEditedAt)} by ${ose.lastEditedBy?.name||'—'}</span>` : ''}
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="openChangeDateModal('${new Date(ose.asOfDate).toISOString().split('T')[0]}')">
+            <i class="fa-solid fa-calendar"></i> As-of: ${fmtD(ose.asOfDate)} &nbsp;<i class="fa-solid fa-pen" style="font-size:10px"></i>
+          </button>
+        </div>
+        <!-- KPI strip -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">
+          <div style="background:var(--surface);border-radius:var(--r);padding:10px 14px;text-align:center">
+            <div class="kv" style="font-size:20px">${lines.length}</div>
+            <div class="kl" style="margin-top:4px">Total Lines</div>
+          </div>
+          <div style="background:var(--surface);border-radius:var(--r);padding:10px 14px;text-align:center">
+            <div class="kv" style="font-size:20px">${Object.keys(groups).length}</div>
+            <div class="kl" style="margin-top:4px">Warehouses</div>
+          </div>
+          <div style="background:#D1FAE5;border-radius:var(--r);padding:10px 14px;text-align:center">
+            <div class="kv" style="font-size:20px;color:#065F46">${editCount}</div>
+            <div class="kl" style="margin-top:4px;color:#065F46">Editable</div>
+          </div>
+          <div style="background:#FEF3C7;border-radius:var(--r);padding:10px 14px;text-align:center">
+            <div class="kv" style="font-size:20px;color:#92400E">${lockedCount}</div>
+            <div class="kl" style="margin-top:4px;color:#92400E">Locked</div>
+          </div>
+          <div style="background:var(--brand-dim);border-radius:var(--r);padding:10px 14px;text-align:center">
+            <div class="kv" style="font-size:14px;color:var(--brand)">${inr(totalValue)}</div>
+            <div class="kl" style="margin-top:4px">Total Value</div>
+          </div>
+        </div>
+        ${lockedCount > 0 ? `<div style="margin-top:12px;font-size:12px;color:#92400E;background:#FEF3C7;border-radius:var(--rs);padding:8px 12px">
+          <i class="fa-solid fa-lock"></i> <strong>${lockedCount} locked line(s)</strong> have existing transactions and cannot be edited inline.
+          Click <strong>View Txns</strong> on a locked line to see what is blocking it.
+        </div>` : ''}
+      </div>
+    </div>
 
-    // Lines table
-    let runningTotal = 0;
-    const lines = (ose.lines || []).map(l => {
-      const lineVal = l.qty * (l.unitRate || 0);
-      runningTotal += lineVal;
-      return `<tr>
-        <td class="tdm">${l.itemId?.itemCode || '—'}</td>
-        <td><strong>${l.itemId?.name || '—'}</strong></td>
-        <td class="tdd">${l.warehouseId?.name || '—'} <span style="font-size:10px">(${l.warehouseId?.code || ''})</span></td>
-        <td class="tdd">${l.uomId?.code || '—'}</td>
-        <td class="tdm" style="text-align:right">${l.qty}</td>
-        <td class="tdm" style="text-align:right">${l.unitRate ? inr(l.unitRate) : '<span style="color:var(--warning)">—</span>'}</td>
-        <td class="tdm" style="text-align:right">${lineVal > 0 ? inr(lineVal) : '—'}</td>
-      </tr>`;
-    });
+    <!-- Warehouse groups -->
+    <div id="ose-wh-groups">
+      ${Object.values(groups).map(g => renderWarehouseGroup(g)).join('')}
+    </div>
 
-    $('ose-detail-lines').innerHTML = lines.join('') ||
-      '<tr><td colspan="7"><div class="empty"><div class="et">No lines</div></div></td></tr>';
+    ${lines.length === 0 ? `<div class="card"><div class="empty">
+      <div class="et">No lines yet</div>
+      <div class="es">Click "Add Lines" above to add items.</div>
+    </div></div>` : ''}
+  `;
+}
 
-    $('ose-detail-foot').innerHTML = `<tr style="background:var(--surface)">
-      <td colspan="4" style="padding:10px 14px;font-weight:600;font-size:12px">TOTAL</td>
-      <td style="padding:10px 14px;text-align:right;font-weight:600;font-family:\'JetBrains Mono\',monospace;font-size:12px">
-        ${(ose.lines || []).reduce((s, l) => s + l.qty, 0)}
-      </td>
-      <td></td>
-      <td style="padding:10px 14px;text-align:right;font-weight:700;font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--brand)">
-        ${inr(runningTotal)}
+function renderWarehouseGroup(group) {
+  const groupTotal = group.lines.reduce((s,l) => s + l.qty*(l.unitRate||0), 0);
+  const lockedInGroup = group.lines.filter(l => l.isLocked).length;
+  const rows = group.lines.map(l => renderOSELine(l)).join('');
+  return `
+    <div class="card" style="margin-bottom:14px">
+      <div class="chd">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:14px;font-weight:600">${group.wName}</span>
+          <span class="tdm tdd" style="font-size:11px">${group.wCode}</span>
+          <span class="tdd" style="font-size:12px">${group.lines.length} line${group.lines.length!==1?'s':''}</span>
+          <span class="tdm" style="font-size:12px">${inr(groupTotal)}</span>
+          ${lockedInGroup ? `<span class="bdg b-pending" style="font-size:10px">${lockedInGroup} locked</span>` : ''}
+        </div>
+      </div>
+      <div class="tw2"><table>
+        <thead><tr>
+          <th>Code</th><th>Item</th><th>UOM</th>
+          <th style="text-align:right;width:110px">Qty</th>
+          <th style="text-align:right;width:120px">Rate ₹</th>
+          <th style="text-align:right;width:110px">Value ₹</th>
+          <th style="width:110px"></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+}
+
+function renderOSELine(l) {
+  const lineVal  = l.qty * (l.unitRate || 0);
+  const itemId   = l.itemId?._id   || l.itemId;
+  const whId     = l.warehouseId?._id || l.warehouseId;
+  const key      = `${itemId}::${whId}`;
+
+  if (l.isLocked) {
+    return `<tr style="background:#FFFBEB" data-key="${key}" data-locked="1">
+      <td class="tdm">${l.itemId?.itemCode||'—'}</td>
+      <td><strong>${l.itemId?.name||'—'}</strong></td>
+      <td class="tdd">${l.uomId?.code||'—'}</td>
+      <td class="tdm" style="text-align:right">${l.qty}</td>
+      <td class="tdm" style="text-align:right">${l.unitRate ? inr(l.unitRate) : '<span style="color:var(--warning)">—</span>'}</td>
+      <td class="tdm" style="text-align:right">${lineVal > 0 ? inr(lineVal) : '—'}</td>
+      <td class="tda">
+        <span class="bdg b-pending" style="font-size:10px"><i class="fa-solid fa-lock" style="font-size:9px"></i> Locked</span>
+        <button class="btn btn-sm btn-ghost btn-icon" title="View blocking transactions"
+          onclick="viewLineTransactions('${itemId}','${whId}','${l.itemId?.name||''}','${l.warehouseId?.name||''}')">
+          <i class="fa-solid fa-eye"></i>
+        </button>
       </td>
     </tr>`;
+  }
 
-    openM('m-ose-detail');
+  // Editable row
+  return `<tr data-key="${key}" data-item-id="${itemId}" data-wh-id="${whId}" data-uom-id="${l.uomId?._id||l.uomId||''}">
+    <td class="tdm">${l.itemId?.itemCode||'—'}</td>
+    <td><strong>${l.itemId?.name||'—'}</strong></td>
+    <td class="tdd">${l.uomId?.code||'—'}</td>
+    <td style="text-align:right;padding:4px 8px">
+      <input type="number" class="lin ose-qty-inp" value="${l.qty}" min="0.01" step="0.01"
+        style="width:90px;text-align:right" oninput="recalcOSELine(this)">
+    </td>
+    <td style="text-align:right;padding:4px 8px">
+      <input type="number" class="lin ose-rate-inp" value="${l.unitRate||''}" min="0" step="0.01"
+        placeholder="Rate ₹" style="width:100px;text-align:right;${!l.unitRate?'border-color:var(--warning)':''}"
+        oninput="recalcOSELine(this)">
+    </td>
+    <td class="tdm ose-val-cell" style="text-align:right">${lineVal > 0 ? inr(lineVal) : '—'}</td>
+    <td class="tda">
+      <button class="btn btn-sm btn-ghost btn-icon" title="Remove this line"
+        onclick="removeOSELineRow(this,'${key}')">
+        <i class="fa-solid fa-minus" style="color:var(--danger)"></i>
+      </button>
+    </td>
+  </tr>`;
+}
+
+function recalcOSELine(input) {
+  const row  = input.closest('tr');
+  const qty  = Number(row.querySelector('.ose-qty-inp')?.value)  || 0;
+  const rate = Number(row.querySelector('.ose-rate-inp')?.value) || 0;
+  const valCell = row.querySelector('.ose-val-cell');
+  if (valCell) valCell.textContent = rate > 0 ? inr(qty * rate) : '—';
+  // Rate border feedback
+  const rateInp = row.querySelector('.ose-rate-inp');
+  if (rateInp) rateInp.style.borderColor = rate > 0 ? '' : 'var(--warning)';
+}
+
+function removeOSELineRow(btn, key) {
+  if (!confirm('Remove this line from opening stock?')) return;
+  btn.closest('tr').remove();
+  // Mark as dirty so Save Changes is obvious
+  toast('Line removed — click Save Changes to confirm', 'warn');
+}
+
+async function saveOSEInline() {
+  // Collect all rows in the warehouse groups
+  const allRows = document.querySelectorAll('#ose-wh-groups tr[data-key]');
+  const lines = [];
+  for (const row of allRows) {
+    if (row.dataset.locked === '1') {
+      // Locked line — pass through with original values from _currentOSE
+      const existingLine = (_currentOSE?.lines || []).find(l => {
+        const k = `${l.itemId?._id||l.itemId}::${l.warehouseId?._id||l.warehouseId}`;
+        return k === row.dataset.key;
+      });
+      if (existingLine) lines.push({
+        itemId:      existingLine.itemId?._id || existingLine.itemId,
+        warehouseId: existingLine.warehouseId?._id || existingLine.warehouseId,
+        uomId:       existingLine.uomId?._id  || existingLine.uomId,
+        qty:         existingLine.qty,
+        unitRate:    existingLine.unitRate || 0,
+      });
+    } else {
+      // Editable row — read from inputs
+      const qty  = Number(row.querySelector('.ose-qty-inp')?.value)  || 0;
+      const rate = Number(row.querySelector('.ose-rate-inp')?.value) || 0;
+      if (qty > 0) lines.push({
+        itemId:      row.dataset.itemId,
+        warehouseId: row.dataset.whId,
+        uomId:       row.dataset.uomId,
+        qty, unitRate: rate,
+      });
+    }
+  }
+
+  // Zero-rate warning
+  const zeroRate = lines.filter(l => !l.unitRate || l.unitRate === 0);
+  if (zeroRate.length) {
+    const names = zeroRate.map(l => _items.find(i=>i._id===l.itemId)?.name || l.itemId).join(', ');
+    if (!confirm(`${zeroRate.length} line(s) have no unit rate:\n${names}\n\nContinue without rate?`)) return;
+  }
+
+  if (!confirm(`Save ${lines.length} opening stock line(s)?`)) return;
+
+  try {
+    const d = await api('PATCH', '/stock/opening', { lines });
+    const skipped = d.data?.skippedLines?.length || 0;
+    if (skipped) toast(`Saved. ${skipped} locked line(s) were skipped.`, 'warn');
+    else toast(d.message || 'Opening stock saved');
+    loadOpeningStockPage();
+    loadStockSummary();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function openChangeDateModal(currentDate) {
+  sv('ose-new-date', currentDate);
+  openM('m-ose-detail');
+}
+
+async function updateOSEDate() {
+  const newDate = gv('ose-new-date');
+  if (!newDate) { toast('Date is required', 'err'); return; }
+  if (!confirm(`Change opening stock date to ${newDate}?\n\nIf OSE ledger entries exist you will need to delete them first.`)) return;
+  try {
+    const d = await api('PATCH', '/stock/opening/date', { asOfDate: newDate });
+    toast(d.message || 'Date updated');
+    closeM('m-ose-detail');
+    loadOpeningStockPage();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// "Add Lines" button when OSE already exists — opens modal in add-only mode (date locked)
+async function openOSEAddModal() {
+  await prefetch();
+  if (!_items.length) {
+    try { const d=await api('GET','/masters/items?limit=200&isActive=true'); _items=d.data||[]; }
+    catch(e) { toast('Could not load items: '+e.message,'err'); return; }
+  }
+  // Pre-fill date from existing OSE (locked — can't change from modal)
+  if (_currentOSE) {
+    sv('os-date', new Date(_currentOSE.asOfDate).toISOString().split('T')[0]);
+    sv('os-remarks', _currentOSE.remarks || '');
+    // Lock the date field in add-only mode
+    const dateField = $('os-date');
+    if (dateField) { dateField.readOnly = true; dateField.style.background = 'var(--surface)'; }
+  }
+  $('os-lines').innerHTML = '';
+  addOSLine();
+  showOSFYBanner({ exists: true, referenceNo: _currentOSE?.referenceNo, fy: _currentOSE?.fy,
+    asOfDate: _currentOSE?.asOfDate,
+    lineCount: _currentOSE?.lines?.length || 0,
+    totalValue: (_currentOSE?.lines||[]).reduce((s,l)=>s+l.qty*(l.unitRate||0),0) });
+  openM('m-opening-stock');
+}
+
+async function viewLineTransactions(itemId, warehouseId, itemName, whName) {
+  toast(`Loading transactions for ${itemName} in ${whName}…`);
+  try {
+    const d = await api('GET', `/stock/opening/line-transactions/${itemId}/${warehouseId}`);
+    const txns = d.data || [];
+    if (!txns.length) {
+      toast('No blocking transactions found — line may already be editable', 'warn');
+      return;
+    }
+    // Show in a simple alert for now (Phase 4 will build the full viewer modal)
+    const lines = txns.map(t =>
+      `${fmtD(t.txnDate)}  ${t.txnType.toUpperCase().padEnd(12)}  ${t.refDocNo||'—'}  ${t.qty > 0 ? '+'+t.qty : t.qty}`
+    ).join('\n');
+    alert(`Blocking transactions for ${itemName} in ${whName}:\n\n${lines}\n\n` +
+      `Delete or reverse these transactions, then refresh this page to edit the line.`);
   } catch(e) { toast(e.message, 'err'); }
 }
 
